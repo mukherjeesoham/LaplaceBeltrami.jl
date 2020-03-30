@@ -1,41 +1,48 @@
-function analyticYlm(S::SphericalHarmonics, ulm::Array{Any, 1}, θ::Number, ϕ::Number)
-    u = 0
-    for l in 0:S.l, m in -l:l
-        u += ulm[join(l,m)]*Ylm(l, m, θ, ϕ)
-    end 
-    return u
-end
+#---------------------------------------------------------------
+# LaplaceOnASphere
+# Soham 3/20
+# Test basis transformations and operators
+#---------------------------------------------------------------
+using PyPlot, LinearAlgebra
 
-function analyticΨlm(S::SphericalHarmonics, ulm::Array{Any, 1}, a::Int, θ::Number, ϕ::Number)
-    u = 0
-    for l in 0:S.l, m in -l:l
-        u += ulm[join(l,m)]*Ψlm(l, m, θ, ϕ)[a]
-    end 
-    return u
-end
-
-S = SphericalHarmonics(2, 4)
-u = map_to_grid(S, (x, y)->sin(x))
-ulm = N2M_Ylm(S)*u
-ua  = map_to_grid(S, (x,y)->analyticYlm(S, ulm, x, y))
-@test maximum(abs.(u - ua)) < 1e-12
-
-uvec = map_to_grid(S, (x,y)->sin(x), (x,y)->cos(y))
-uveclm = N2M_Ψlm(S)*uvec
-
-# Rewrite the modal array
-for l in 0:S.l, m in -l:l 
-    if l == 2
-        uveclm[join(l,m)] = Complex(1,0) 
-    else
-        uveclm[join(l,m)] = Complex(0,0)
+if false
+    l = 10
+    projection_error = zeros(l, 2l+1)
+    for index in CartesianIndices(projection_error)
+        l, N = index.I
+        S = SphericalHarmonics{Float64}(l, N+1) 
+        u = map(S, (θ, ϕ)->cos(θ)^3)
+        L = nodal_to_modal_scalar_op(S)
+        P = modal_to_nodal_scalar_op(S)
+        projection_error[index]= log10(L1(u - P*(L*u)))
     end
+    imshow(projection_error,  origin="upper")
+    colorbar()
+    savefig("./output/ScalarSPH_projection_error_cos3.pdf")
+    close()
 end
 
-# Now construct the nodal array
-uveca  = map_to_grid(S, (x,y)->analyticΨlm(S, uveclm, 1, x, y),
-                        (x,y)->analyticΨlm(S, uveclm, 2, x, y))
-uvecalm = N2M_Ψlm(S)*uveca
+lmax = 10
+for l in 0:lmax
+    @show l
+    S = SphericalHarmonics{Float64}(l, 2l+1)
+    L = nodal_to_modal_scalar_op(S)
+    P = modal_to_nodal_scalar_op(S)
+    @test isless(maximum(abs.(L*P - I)), 1e-12)
+    @test P*L ≈ (P*L)^2 
+    L̄ = nodal_to_modal_vector_op(S)
+    P̄ = modal_to_nodal_vector_op(S)
+    @test isless(maximum(abs.(L*P - I)), 1e-12)
+    @test P*L ≈ (P*L)^2 
+end
 
-# Now compare the modal space
-@test maximum(abs.(uvecalm - uveclm)) < 1e-12
+for l in 4:lmax
+    @show l
+    S = SphericalHarmonics{Float64}(l, 2l+1) 
+    u = map(S, (θ, ϕ)->ScalarSPH(2, 0, θ, ϕ))
+    L = nodal_to_modal_scalar_op(S)
+    P = modal_to_nodal_scalar_op(S)
+    @test L1(u - P*(L*u)) < 1e-9
+    ũ = L*u
+    @test L1(ũ - L*(P*ũ)) < 1e-12
+end

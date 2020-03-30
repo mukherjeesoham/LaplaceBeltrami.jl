@@ -1,53 +1,64 @@
+#---------------------------------------------------------------
+# LaplaceOnASphere
+# Soham 3/20
+# Compute operators for transforming between spaces 
+#---------------------------------------------------------------
+
 using LinearAlgebra
+export modal_to_nodal_scalar_op, nodal_to_modal_scalar_op
+export modal_to_nodal_vector_op, nodal_to_modal_vector_op
+export scaling_scalar_op, scaling_vector_op 
 
-export M2N_Ylm, N2M_Ylm, M2N_Ψlm, N2M_Ψlm, S_Ylm, S_Ψlm
-
-function M2N_Ylm(S::SphericalHarmonics)
-    A = zeros(Complex, S.n*2(S.n), (S.l)^2 + 2*(S.l) + 1)
+function modal_to_nodal_scalar_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2} where {T}
+    lmax, n = S.lmax, S.N
+    A = zeros(Complex{T}, n*(2*n), (lmax)^2 + 2*(lmax) + 1)
     for index in CartesianIndices(A)
-        (i,j) = split(index.I[1], S.n)
+        (i,j) = split(index.I[1], n)
         (l,m) = split(index.I[2])
-        (θ,ϕ) = grid(i,j,S.n)
-        A[index] = Ylm(l, m, θ, ϕ)
+        (θ,ϕ) = grid(S,i,j)
+        A[index] = ScalarSPH(l, m, θ, ϕ)
     end
     return A
 end
 
-function N2M_Ylm(S::SphericalHarmonics)
-    return pinv(M2N_Ylm(S))
+function nodal_to_modal_scalar_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2} where {T}
+    return pinv(modal_to_nodal_scalar_op(S))
 end
 
-function M2N_Ψlm(S::SphericalHarmonics)
-    A = zeros(Complex, 2*S.n*2(S.n), (S.l)^2 + 2*(S.l) + 1)
+function modal_to_nodal_vector_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2} where {T}
+    lmax, n = S.lmax, S.N
+    A = zeros(Complex, 2*(n*(2*n)), (lmax)^2 + 2*(lmax) + 1)
     for index in CartesianIndices(A)
-        (i,j,a) = split3(index.I[1], S.n)
-        (l,m) = split(index.I[2])
-        (θ,ϕ) = grid(i,j,S.n)
-        A[index] = (a == 1 ? dYlmdθ(l, m, θ, ϕ) : dYlmdϕ(l, m, θ, ϕ))
+        (i,j,a) = split3(index.I[1], n)
+        (l,m)   = split(index.I[2])
+        (θ,ϕ)   = grid(S,i,j)
+        A[index] = VectorSPH(l, m, θ, ϕ)[a]
     end
     return A
 end
 
-function N2M_Ψlm(S::SphericalHarmonics)
-    return pinv(M2N_Ψlm(S))
+function nodal_to_modal_vector_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2} where {T}
+    return pinv(modal_to_nodal_vector_op(S))
 end
 
-function S_Ylm(S::SphericalHarmonics, u::Function)
-    N = S.n
+function scaling_scalar_op(S::SphericalHarmonics{T}, u::Function)::Array{Complex{T}, 2} where {T}
+    n = S.N
     A = Diagonal(zeros(N*2N)) 
     for index in 1:N*2N
         i, j = split(index, N) 
-        A[index, index] = u(grid(i, j, N)...)
+        A[index, index] = u(grid(S,i,j)...)
     end
     return A
 end
 
-function S_Ψlm(S::SphericalHarmonics, u1::Function, u2::Function)
+function scaling_vector_op(S::SphericalHarmonics{T}, u1::Function, u2::Function)::Array{Complex{T}, 2} where {T}
     N = S.n
-    A = Diagonal(zeros(2N*2N)) 
-    for index in 1:2N
-        i, j, a = split3(index, N) 
-        A[index, index] = (a == 1 ? u1(grid(i,j,N)...) : u2(grid(i,j,N)...))
+    A = zeros(2N*2N, 2N*2N)
+    for index in CartesianIndices(A)
+        if index.I[1] == index.I[2]
+            i,j,a = split3(index.I[1], N)
+            A[index] = (a == 1 ? u1(grid(S,i,j)...) : u2(grid(S,i,j)...))
+        end
     end
     return A
 end

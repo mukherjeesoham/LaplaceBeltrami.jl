@@ -8,16 +8,22 @@
 #                                   ϕ′_lm
 #    S(1\|g|) l(l+1) Y_lm ϕ′_lm 
 #    S(1\|g|) l(l+1) Y_lm inv(Ψ_lm) S(|g|) S(gij) Ψ_lm [ϕ^lm]
+#    Δ*ϕ_lm = l(l+1) Ylm*ϕ_lm = L(l)*𝐘*ϕ
+#
+#    q: beautiful round sphere metric
+#
+#    L^lm''_lm = inv(Y)_ij'^lm'' |h|^ij' Y^ij'_lm' l'(l'+1) inv(Ψ)_ijb^lm' |h|^ij h^ab^ij Ψ^ija_lm
+#
+#    |h| = |g| / |q|
+#    inv(h) = q inv(g)
+#    h^ab = δ^a_c q_cd g^db
+#
 # where S(f) is the diagonal operators for scaling
 # and we've used the fact that ∇.(ϕ^lm Ψ_lm) = l(l+1) ϕ^lm Y_lm 
 # See <R G Barrera et al 1985 Eur. J. Phys. 6 287> 
 # for reference and introduction to VSH. 
-# ASK: Why will it not work? Or will it? 
 #---------------------------------------------------------------
-
 using LaplaceOnASphere, Test, LinearAlgebra
-
-S = SphericalHarmonics(2, 2)
 
 function gab(θ, ϕ, a, b)
     if a == 1 && b == 1
@@ -33,21 +39,6 @@ function sqrtdetg(θ, ϕ)
     return sin(θ)
 end
 
-# Now try a different metric
-function g̃ab(θ, ϕ, a, b)
-    if a == 1 && b == 1
-        return (2θ*cos(θ) + 2*sin(θ))^2
-    elseif a == 2 && b == 2
-        return 1/sin(θ)^2
-    else
-        return 0
-    end
-end
-        
-function sqrtdetg̃(θ, ϕ)
-    return 4*(1 + θ*cot(θ))^2
-end
-
 function L_M2N_Ylm(S)
     A = zeros(Complex, S.n*2(S.n), (S.l)^2 + 2*(S.l) + 1)
     for index in CartesianIndices(A)
@@ -59,17 +50,62 @@ function L_M2N_Ylm(S)
     return A
 end
 
+#---------------------------------------------------------------
+# Construct Operators
+#---------------------------------------------------------------
 
-LΨlm = M2N_Ψlm(S)
-LSgg = S_Ψlm(S, (θ, ϕ)->sqrtdetg(θ,ϕ)*gab(θ,ϕ,1,1), 
-                (θ, ϕ)->sqrtdetg(θ,ϕ)*gab(θ,ϕ,2,2))
-LSg  = S_Ylm(S, (θ, ϕ)->1/sqrtdetg(θ,ϕ))
-LΨ̄lm = N2M_Ψlm(S)
-LYlm = L_M2N_Ylm(S)
-LȲlm = pinv(LYlm) 
+S = SphericalHarmonics(4, 8)
 
-Δlm = LȲlm*LSg*LYlm*LΨ̄lm*LSgg*LΨlm
-F = eigen(Δlm)
-@show real.(F.values)
-@show imag.(F.values)
-@show F.vectors[:, 1]
+LΨlm  = M2N_Ψlm(S)
+# LSgg  = S_Ψlm(S, (θ, ϕ)->sqrtdetg(θ,ϕ)*gab(θ,ϕ,1,1), 
+                 # (θ, ϕ)->sqrtdetg(θ,ϕ)*gab(θ,ϕ,2,2))
+# LSg   = S_Ylm(S, (θ, ϕ)->1/sqrtdetg(θ,ϕ))
+LSgg  = S_Ψlm(S, (θ, ϕ)->1, 
+                 (θ, ϕ)->1)
+
+LSg   = S_Ylm(S, (θ, ϕ)->1)
+
+LΨ̄lm  = N2M_Ψlm(S)
+LlYlm = L_M2N_Ylm(S)
+LỸlm  = N2M_Ylm(S)
+
+Δ = LSg*LlYlm*LΨ̄lm*LSgg*LΨlm
+Δlm = LỸlm*LSg*LlYlm*LΨ̄lm*LSgg*LΨlm
+
+#---------------------------------------------------------------
+# Construct functions for testing
+#---------------------------------------------------------------
+
+l  = 4
+m  = 0
+f  = map_to_grid(S, (θ, ϕ)->Ylm(l,m,θ,ϕ))
+Δf = l*(l+1)*f 
+
+flm  = N2M_Ylm(S)*f
+Δflm = N2M_Ylm(S)*Δf
+
+∇u = map_to_grid(S, (x,y)->-(1/2)*sqrt(3/π)*sin(x)^2, (x,y)->0)
+∇ulm = N2M_Ψlm(S)*∇u 
+∇ū = map_to_grid(S, (x,y)->analyticΨlm(S, ∇ulm, 1, x, y),
+                    (x,y)->analyticΨlm(S, ∇ulm, 2, x, y))
+
+#---------------------------------------------------------------
+# Test using functions
+# TODO: Test ∇u transformations [Done] => Ψ̄lm is working?
+#       But why does it disagree with Mathematica?
+# TODO: Test with analytical functions for 2 and 3 modes/points
+# TODO: Make the operator using only indices
+#---------------------------------------------------------------
+
+@test_broken L1(Δ*flm - Δf) < 1e-12
+@test_broken L1(Δlm*flm - Δflm) < 1e-12
+# @test L1(real.(LSgg*LΨlm*flm) - ∇u) < 1e-12
+# @test L1(∇u - ∇ū) < 1e-12
+
+# @test L1(Δlm*flm - (LỸlm*LSg*LlYlm)*∇ulm) < 1e-12
+# @show L1(pinv(LỸlm)*Δflm - (LSg*LlYlm)*∇ulm)
+# @show L1(pinv(LỸlm*LSg*LlYlm)*Δflm - ∇ulm)
+
+# display(abs.(Δlm*flm))
+println("========================")
+display(abs.(LỸlm*Δf))
