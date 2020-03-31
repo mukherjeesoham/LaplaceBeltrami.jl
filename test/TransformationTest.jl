@@ -22,23 +22,9 @@ if false
     close()
 end
 
-lmax = 10
-for l in 0:lmax
-    @show l
-    S = SphericalHarmonics{Float64}(l, 2l+1)
-    L = nodal_to_modal_scalar_op(S)
-    P = modal_to_nodal_scalar_op(S)
-    @test isless(maximum(abs.(L*P - I)), 1e-12)
-    @test P*L ≈ (P*L)^2 
-    L̄ = nodal_to_modal_vector_op(S)
-    P̄ = modal_to_nodal_vector_op(S)
-    @test isless(maximum(abs.(L*P - I)), 1e-12)
-    @test P*L ≈ (P*L)^2 
-end
 
 for l in 4:lmax
-    @show l
-    S = SphericalHarmonics{Float64}(l, 2l+1) 
+    S = SphericalHarmonics(l)
     u = map(S, (θ, ϕ)->ScalarSPH(2, 0, θ, ϕ))
     L = nodal_to_modal_scalar_op(S)
     P = modal_to_nodal_scalar_op(S)
