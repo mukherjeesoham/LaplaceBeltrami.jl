@@ -16,7 +16,7 @@ function modal_to_nodal_scalar_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2
     for index in CartesianIndices(A)
         (i,j) = split(index.I[1], n)
         (l,m) = split(index.I[2])
-        (θ,ϕ) = grid(S,i,j)
+        (θ,ϕ) = collocation(S,i,j)
         A[index] = ScalarSPH(l, m, θ, ϕ)
     end
     return A
@@ -32,7 +32,7 @@ function modal_to_nodal_vector_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2
     for index in CartesianIndices(A)
         (i,j,a) = split3(index.I[1], n)
         (l,m)   = split(index.I[2])
-        (θ,ϕ)   = grid(S,i,j)
+        (θ,ϕ)   = collocation(S,i,j)
         A[index] = VectorSPH(l, m, θ, ϕ)[a]
     end
     return A
@@ -49,7 +49,7 @@ function scaling_scalar_op(S::SphericalHarmonics{T}, g::Function)::Array{T, 2} w
         P, Q = index.I
         m,n = split(P, N)
         k,l = split(Q, N)
-        θ, ϕ  = grid(S, k, l)
+        θ, ϕ  = collocation(S, k, l)
         if (m, n) == (k,l)
             A[index] = g(θ, ϕ) 
         end
@@ -64,7 +64,7 @@ function scaling_vector_op(S::SphericalHarmonics{T}, g::Function)::Array{T, 2} w
         P, Q = index.I
         m,n,a = split3(P, N)
         k,l,b = split3(Q, N)
-        θ, ϕ  = grid(S, k, l)
+        θ, ϕ  = collocation(S, k, l)
         if (m, n) == (k,l)
             A[index] = g(a, b, θ, ϕ) 
         end

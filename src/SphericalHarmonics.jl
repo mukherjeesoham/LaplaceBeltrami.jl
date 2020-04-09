@@ -34,7 +34,8 @@ function ScalarSPH(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
 end
 
 function VectorSPH(l::Int, m::Int, θ::T, ϕ::T)::NTuple{2, Complex{T}} where {T}
+    # XXX: You need a sin(θ) term in the gradient operator. Decide if it should go here.
     dYdθ = m*cot(θ)*ScalarSPH(l,m,θ,ϕ) + sqrt((l-m)*(l+m+1))*cis(-ϕ)*ScalarSPH(l,m+1,θ,ϕ)
     dYdϕ = im*m*ScalarSPH(l,m,θ,ϕ)
-    return (dYdθ, dYdϕ)
+    return (dYdθ, (1/sin(θ))*dYdϕ)
 end

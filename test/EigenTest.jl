@@ -30,8 +30,8 @@ using LinearAlgebra, PyPlot
 
 #---------------------------------------------------------------
 # Functions needed for scaling
-# Set up new coordinates 
-# (θ̃, ϕ̃) = ((1 + θ cos(θ) + sin(θ)^2), 1)
+# TODO: Implement the squeeze the poles coordinate transformation
+# from Bensten et. al. 1999
 #---------------------------------------------------------------
 
 function ll(l::Int, m::Int)::Int
@@ -42,9 +42,12 @@ function invsqrtdetg(θ::T, ϕ::T)::T where {T}
     return 1/sqrtdetg(1, 1, θ, ϕ)
 end
 
+ω = 1
 function gab(a::Int, b::Int, θ::T, ϕ::T)::T where {T}
     @assert (1 <= a <= 2) && (1 <= b <= 2)
     if a == 1 && b == 1
+        # return exp(-2*θ*ω)*(exp(θ*ω) - cos(θ) + ω*sin(θ))^2
+        return (1/4)*(2 + cos(θ))^2
         # return (1 + (ϕ^2)*cos(ϕ)^2 + sin(ϕ)*(sin(ϕ) + ϕ*cos(θ)*(2 + ϕ*cos(θ)*sin(ϕ))) + ϕ*sin(2ϕ))
         # return 1 + θ*cos(θ) + sin(θ)^2
         return 1
@@ -61,9 +64,11 @@ end
 function sqrtdetg(a::Int, b::Int, θ::T, ϕ::T)::T where {T}
     @assert (1 <= a <= 2) && (1 <= b <= 2)
     if a == b
+        # return exp(θ*ω)/(exp(θ*ω) - cos(θ) + ω*sin(θ))
+        return 2/(2 + cos(θ))
         # return 1/(1 + ϕ*cos(θ)*sin(ϕ) - sin(θ)*(θ*cos(θ) + sin(θ))*sin(ϕ)^2 + cos(ϕ)*sin(θ)*(θ - ϕ*sin(θ)*sin(ϕ))^2)
         # return sqrt(abs(1/(1 + θ*cos(θ) + sin(θ)^2)))
-        return 1
+        # return 1
         # return abs(sin(θ))
     else
         return 0
@@ -73,8 +78,9 @@ end
 #---------------------------------------------------------------
 # Construct the operator
 #---------------------------------------------------------------
+# FIXME: You need a sin(θ) term in the gradient operator
 
-SH = SphericalHarmonics(20)
+SH = SphericalHarmonics{Float64}(30, 100)
 take_me_to_the_vector_modes = nodal_to_modal_vector_op(SH)
 take_me_to_the_vector_nodes = modal_to_nodal_vector_op(SH)
 take_me_to_the_scalar_nodes = modal_to_nodal_scalar_op(SH)
@@ -91,17 +97,29 @@ scale_the_modes = modal_scaling_op(SH, ll)
 #---------------------------------------------------------------
 F = eigen(Δ)
 
-for k in 1:9
-    contourf(SH, take_me_to_the_scalar_nodes*F.vectors[:, k])
-    savefig("./output/eigenvector$k.pdf")
-    close()
-end
+@show maximum(imag.(F.values))
+eigenvalues = F.values
+plot(real(eigenvalues[1:15]), "-o")
+savefig("./output/eigenvalues.pdf")
+close()
+
+# for k in 1:9
+    # contourf(SH, take_me_to_the_scalar_nodes*F.vectors[:, k])
+    # savefig("./output/eigenvector$k.pdf")
+    # close()
+# end
 
 #---------------------------------------------------------------
 # Test the operators on Spherical Harmonic functions 
 #---------------------------------------------------------------
-(l,m) = (6, 0)
-u  = map(SH, (θ, ϕ)->ScalarSPH(l, m, θ, ϕ))
-Δu = l*(l+1)*u 
-@test_broken take_me_to_the_scalar_nodes*(Δ*(take_me_to_the_scalar_modes*u)) ≈ Δu
+
+# Y10 = map(SH, (θ,ϕ)->ScalarSPH(2, 0, θ - exp(-θ*ω)*sin(θ), ϕ))
+# contourf(SH, Y10)
+# savefig("./output/Y20transformed.pdf")
+# close()
+
+# (l,m) = (6, 0)
+# u  = map(SH, (θ, ϕ)->ScalarSPH(l, m, θ, ϕ))
+# Δu = l*(l+1)*u 
+# @test_broken take_me_to_the_scalar_nodes*(Δ*(take_me_to_the_scalar_modes*u)) ≈ Δu
 

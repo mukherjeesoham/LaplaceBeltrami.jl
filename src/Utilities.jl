@@ -1,12 +1,12 @@
 #---------------------------------------------------------------
 # LaplaceOnASphere
 # Soham 3/20
-# Utitilies for grid
+# Utitilies for collocation
 #---------------------------------------------------------------
 
-export grid, split3, join3, map_to_grid, analyticΨlm, analyticYlm, L1
+export collocation, split3, join3, map_to_grid, analyticΨlm, analyticYlm, L1
 
-function grid(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
+function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
     # NOTE: Driscoll and Healy points have a collocation point at the poles. 
     # This won't work for us at the moment since Ψ breaks down at the poles.
     # Currently using ECP collocation points. 
@@ -20,7 +20,7 @@ function Base. map(S::SphericalHarmonics{T}, u::Function)::Array{Complex{T}, 1} 
     uvec = Array{Complex{T}, 1}(undef, N*2N)
     for index in CartesianIndices(uvec)
         i, j = split(index.I[1], N)
-        θ, ϕ = grid(S, i, j)
+        θ, ϕ = collocation(S, i, j)
         uvec[index] = u(θ, ϕ)
     end
     return uvec
@@ -31,7 +31,7 @@ function Base. map(S::SphericalHarmonics{T}, uθ::Function, uϕ::Function)::Arra
     uvec = Array{Complex{T}, 1}(undef, 2*(N*2N))
     for index in CartesianIndices(uvec)
         i, j, a = split3(index.I[1], N)
-        θ, ϕ = grid(S, i, j)
+        θ, ϕ = collocation(S, i, j)
         uvec[index] = (a==1 ? uθ(θ, ϕ) : uϕ(θ, ϕ))
     end
     return uvec

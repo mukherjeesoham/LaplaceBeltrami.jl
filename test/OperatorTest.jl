@@ -65,7 +65,7 @@ function modal_to_nodal_scalar_scaled_op(S::SphericalHarmonics{T})::Array{Comple
     for index in CartesianIndices(A)
         (i,j) = split(index.I[1], n)
         (l,m) = split(index.I[2])
-        (θ,ϕ) = grid(S,i,j)
+        (θ,ϕ) = collocation(S,i,j)
         A[index] = l*(l+1)*ScalarSPH(l, m, θ, ϕ)
     end
     return A
