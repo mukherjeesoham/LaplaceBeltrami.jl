@@ -2,11 +2,12 @@
 # LaplaceOnASphere
 # Soham 3/20
 # Compute scalar and tensor spherical harmonics
+# VectorSPH = ∇ScalarSPH
 #---------------------------------------------------------------
 
 using GSL
 export ScalarSPH, VectorSPH
-abstol = 1e-9
+abstol = 1e-5
 
 function unpack(x::gsl_sf_result)
     return x.val, x.err
@@ -34,7 +35,6 @@ function ScalarSPH(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
 end
 
 function VectorSPH(l::Int, m::Int, θ::T, ϕ::T)::NTuple{2, Complex{T}} where {T}
-    # XXX: You need a sin(θ) term in the gradient operator. Decide if it should go here.
     dYdθ = m*cot(θ)*ScalarSPH(l,m,θ,ϕ) + sqrt((l-m)*(l+m+1))*cis(-ϕ)*ScalarSPH(l,m+1,θ,ϕ)
     dYdϕ = im*m*ScalarSPH(l,m,θ,ϕ)
     return (dYdθ, (1/sin(θ))*dYdϕ)

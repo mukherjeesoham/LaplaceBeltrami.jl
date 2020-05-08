@@ -30,45 +30,32 @@ using LinearAlgebra, PyPlot
 
 #---------------------------------------------------------------
 # Functions needed for scaling
-# TODO: Implement the squeeze the poles coordinate transformation
-# from Bensten et. al. 1999
 #---------------------------------------------------------------
 
 function ll(l::Int, m::Int)::Int
     return l*(l+1)
 end
 
-function invsqrtdetg(θ::T, ϕ::T)::T where {T}
+function invsqrtdetg(θ::T, ϕ::T)::Complex{T} where {T}
     return 1/sqrtdetg(1, 1, θ, ϕ)
 end
 
-ω = 1
-function gab(a::Int, b::Int, θ::T, ϕ::T)::T where {T}
+function invgab(a::Int, b::Int, θ::T, ϕ::T)::Complex{T} where {T}
     @assert (1 <= a <= 2) && (1 <= b <= 2)
-    if a == 1 && b == 1
-        # return exp(-2*θ*ω)*(exp(θ*ω) - cos(θ) + ω*sin(θ))^2
-        return (1/4)*(2 + cos(θ))^2
-        # return (1 + (ϕ^2)*cos(ϕ)^2 + sin(ϕ)*(sin(ϕ) + ϕ*cos(θ)*(2 + ϕ*cos(θ)*sin(ϕ))) + ϕ*sin(2ϕ))
-        # return 1 + θ*cos(θ) + sin(θ)^2
-        return 1
-    elseif a == 2 && b == 2
-        # return ((1 + θ*cos(ϕ)*sin(θ))^2 + (sin(θ)^2)*((θ*cos(θ) + sin(θ))^2)*(sin(ϕ)^2))
-        return 1
+    return invhab(SH, a, b, θ, ϕ)
+    # if a == 1 && b == 1
+        # return 1
+    # elseif a == 2 && b == 2
         # return 1/sin(θ)^2
-    else
-        # return ((θ*ϕ)*cos(ϕ)^2 + cos(ϕ)*(ϕ*csc(θ) + θ*sin(ϕ)) + sin(ϕ)*(csc(θ) + sin(θ) + cos(θ)*(θ + ϕ*(θ*cos(θ) + sin(θ))*sin(ϕ))))
-        return 0
-    end
+    # else
+        # return 0
+    # end
 end
 
-function sqrtdetg(a::Int, b::Int, θ::T, ϕ::T)::T where {T}
+function sqrtdetg(a::Int, b::Int, θ::T, ϕ::T)::Complex{T} where {T}
     @assert (1 <= a <= 2) && (1 <= b <= 2)
     if a == b
-        # return exp(θ*ω)/(exp(θ*ω) - cos(θ) + ω*sin(θ))
-        return 2/(2 + cos(θ))
-        # return 1/(1 + ϕ*cos(θ)*sin(ϕ) - sin(θ)*(θ*cos(θ) + sin(θ))*sin(ϕ)^2 + cos(ϕ)*sin(θ)*(θ - ϕ*sin(θ)*sin(ϕ))^2)
-        # return sqrt(abs(1/(1 + θ*cos(θ) + sin(θ)^2)))
-        # return 1
+        return sqrtdeth(SH, θ, ϕ)
         # return abs(sin(θ))
     else
         return 0
@@ -78,48 +65,34 @@ end
 #---------------------------------------------------------------
 # Construct the operator
 #---------------------------------------------------------------
-# FIXME: You need a sin(θ) term in the gradient operator
 
-SH = SphericalHarmonics{Float64}(30, 100)
+SH = SphericalHarmonics{Float64}(4, 10)
 take_me_to_the_vector_modes = nodal_to_modal_vector_op(SH)
 take_me_to_the_vector_nodes = modal_to_nodal_vector_op(SH)
 take_me_to_the_scalar_nodes = modal_to_nodal_scalar_op(SH)
 take_me_to_the_scalar_modes = nodal_to_modal_scalar_op(SH)
-scale_with_gab = scaling_vector_op(SH, gab)
+scale_with_invgab = scaling_vector_op(SH, invgab)
 scale_with_sqrtdetg = scaling_vector_op(SH, sqrtdetg) 
 scale_with_invsqrtdetg = scaling_scalar_op(SH, invsqrtdetg) 
 scale_the_modes = modal_scaling_op(SH, ll)
 
-Δ = take_me_to_the_scalar_modes*scale_with_invsqrtdetg*take_me_to_the_scalar_nodes*scale_the_modes*take_me_to_the_vector_modes*scale_with_sqrtdetg*scale_with_gab*take_me_to_the_vector_nodes 
+Δ = (take_me_to_the_scalar_modes*scale_with_invsqrtdetg*take_me_to_the_scalar_nodes*scale_the_modes*
+      take_me_to_the_vector_modes*scale_with_sqrtdetg*scale_with_invgab*take_me_to_the_vector_nodes)
 
 #---------------------------------------------------------------
 # Compute eigenvalues and eigenvectors of the operator
 #---------------------------------------------------------------
 F = eigen(Δ)
 
-@show maximum(imag.(F.values))
+# @assert maximum(imag.(F.values)) < 1e-10
 eigenvalues = F.values
 plot(real(eigenvalues[1:15]), "-o")
-savefig("./output/eigenvalues.pdf")
+savefig("./eigenvalues.pdf")
 close()
 
 # for k in 1:9
     # contourf(SH, take_me_to_the_scalar_nodes*F.vectors[:, k])
-    # savefig("./output/eigenvector$k.pdf")
+    # savefig("./eigenvector$k.pdf")
     # close()
 # end
-
-#---------------------------------------------------------------
-# Test the operators on Spherical Harmonic functions 
-#---------------------------------------------------------------
-
-# Y10 = map(SH, (θ,ϕ)->ScalarSPH(2, 0, θ - exp(-θ*ω)*sin(θ), ϕ))
-# contourf(SH, Y10)
-# savefig("./output/Y20transformed.pdf")
-# close()
-
-# (l,m) = (6, 0)
-# u  = map(SH, (θ, ϕ)->ScalarSPH(l, m, θ, ϕ))
-# Δu = l*(l+1)*u 
-# @test_broken take_me_to_the_scalar_nodes*(Δ*(take_me_to_the_scalar_modes*u)) ≈ Δu
 

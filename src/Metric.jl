@@ -6,12 +6,24 @@
 
 export invhab, sqrtdeth, invsqrtdeth
 
-function μ(θ::T, ϕ::T) where {T}
-    return ScalarSPH(3,1,θ,ϕ)
+function μ1(θ::T, ϕ::T) where {T}
+    return ScalarSPH(2,0,θ,ϕ)
 end
 
-function ν(θ::T, ϕ::T) where {T}
-    return ScalarSPH(2,2,θ,ϕ)
+function ν1(θ::T, ϕ::T) where {T}
+    return ScalarSPH(1,1,θ,ϕ)
+end
+
+function μ(θ::T, ϕ::T)::T where {T}
+    N = (-3 + 3*im) + sqrt(6) + 2*sqrt(6)*cis(ϕ)*tan(θ/2)
+    D = 6*sqrt(sqrt(Complex(-1))) - 6*sqrt(3) + 4*sqrt(3)*cis(ϕ)*tan(θ/2) 
+    return 2*atan(sqrt(2)*abs(N/D))
+end
+
+function ν(θ::T, ϕ::T)::T where {T}
+    N = (-3 + 3*im) + sqrt(6) + 2*sqrt(6)*cis(ϕ)*tan(θ/2)
+    D = 6*sqrt(sqrt(Complex(-1))) - 6*sqrt(3) + 4*sqrt(3)*cis(ϕ)*tan(θ/2) 
+    return angle((1+im)*(N/D))
 end
 
 function computeJacobian(S::SphericalHarmonics{T}, θ::T, ϕ::T)::Array{Complex{T},2} where {T}
@@ -27,6 +39,7 @@ function computeJacobian(S::SphericalHarmonics{T}, θ::T, ϕ::T)::Array{Complex{
         jacobian[2,1] += Ylm[join(l,m)]*Ψ[1] 
         jacobian[2,2] += Ylm[join(l,m)]*Ψ[2]*sin(θ)
     end
+    @assert rank(jacobian) == 2
     return jacobian
 end
 
@@ -90,3 +103,10 @@ end
 function sqrtdeth(S::SphericalHarmonics, θ::T, ϕ::T)::Complex{T} where {T}
     return 1/invsqrtdeth(S, θ, ϕ)
 end
+
+#---------------------------------------------------------------
+# Construct an optimized version of  h^ab
+#---------------------------------------------------------------
+function invhab_opt(S::SphericalHarmonics{T})::Complex{T} where {T}
+end
+

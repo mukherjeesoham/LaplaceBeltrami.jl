@@ -28,7 +28,7 @@ end
 
 function modal_to_nodal_vector_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2} where {T}
     lmax, n = S.lmax, S.N
-    A = zeros(Complex, 2*(n*(2*n)), (lmax)^2 + 2*(lmax) + 1)
+    A = zeros(Complex{T}, 2*(n*(2*n)), (lmax)^2 + 2*(lmax) + 1)
     for index in CartesianIndices(A)
         (i,j,a) = split3(index.I[1], n)
         (l,m)   = split(index.I[2])
@@ -42,9 +42,9 @@ function nodal_to_modal_vector_op(S::SphericalHarmonics{T})::Array{Complex{T}, 2
     return pinv(modal_to_nodal_vector_op(S))
 end
 
-function scaling_scalar_op(S::SphericalHarmonics{T}, g::Function)::Array{T, 2} where {T}
+function scaling_scalar_op(S::SphericalHarmonics{T}, g::Function)::Array{Complex{T}, 2} where {T}
     N = S.N
-    A = zeros(T, N*2N, N*2N)
+    A = zeros(Complex{T}, N*2N, N*2N)
     for index in CartesianIndices(A)
         P, Q = index.I
         m,n = split(P, N)
@@ -57,9 +57,9 @@ function scaling_scalar_op(S::SphericalHarmonics{T}, g::Function)::Array{T, 2} w
     return A
 end
 
-function scaling_vector_op(S::SphericalHarmonics{T}, g::Function)::Array{T, 2} where {T}
+function scaling_vector_op(S::SphericalHarmonics{T}, g::Function)::Array{Complex{T}, 2} where {T}
     N = S.N
-    A = zeros(T, 2N*2N, 2N*2N)
+    A = zeros(Complex{T}, 2N*2N, 2N*2N)
     for index in CartesianIndices(A)
         P, Q = index.I
         m,n,a = split3(P, N)

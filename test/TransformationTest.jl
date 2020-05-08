@@ -22,7 +22,7 @@ if false
     close()
 end
 
-
+lmax = 10
 for l in 4:lmax
     S = SphericalHarmonics(l)
     u = map(S, (θ, ϕ)->ScalarSPH(2, 0, θ, ϕ))
