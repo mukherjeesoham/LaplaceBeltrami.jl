@@ -4,14 +4,14 @@
 # Utitilies for collocation
 #---------------------------------------------------------------
 
-export collocation, split3, join3, map_to_grid, analyticΨlm, analyticYlm, L1
+export LInf, L2, L1
 
 function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
     # NOTE: Driscoll and Healy points have a collocation point at the poles. 
     # This won't work for us at the moment since Ψ breaks down at the poles.
     # Currently using ECP collocation points. 
     θ = (i-1/2)*(π/S.N)  # [0,  π]
-    ϕ = (j-1)*(π/S.N)    # [0, 2π]
+    ϕ = (j-1)*(2π/S.N)   # [0, 2π]
     return (θ, ϕ)
 end
 
@@ -25,7 +25,7 @@ function Base. map(S::SphericalHarmonics{T}, u::Function)::Array{Complex{T}, 1} 
     end
     return uvec
 end
-
+        
 function Base. map(S::SphericalHarmonics{T}, uθ::Function, uϕ::Function)::Array{Complex{T}, 1} where {T}
     N = S.N
     uvec = Array{Complex{T}, 1}(undef, 2*(N*2N))
@@ -53,6 +53,14 @@ function analyticΨlm(S::SphericalHarmonics{T}, ulm::Array{Complex{T}, 1}, θ::T
     return u
 end
 
-function L1(x::Array{T,1}) where {T}
+function LInf(x::Array{T,1}) where {T}
     return maximum(abs.(x))
+end
+
+function L1(x::Array{T,1}) where {T}
+    return sum(abs.(x))
+end
+
+function L2(x::Array{T,1}) where {T}
+    return sqrt(sum(abs.(x).^2))
 end
