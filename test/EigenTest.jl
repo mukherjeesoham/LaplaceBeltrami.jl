@@ -55,8 +55,8 @@ end
 # Construct the operators
 #---------------------------------------------------------------
 
-SH = SphericalHarmonics(12)
-lmax = 3
+SH = SphericalHarmonics(4)
+lmax = 4
 
 S = modal_to_nodal_scalar_op(SH) 
 S̄ = nodal_to_modal_scalar_op(SH)
@@ -75,55 +75,22 @@ laplace = D*div*(H*grad)
 # test laplace, and if that doesn't work 
 # check grad, div and scaling
 #---------------------------------------------------------------
-@testset "all" begin
-
-    @test H*grad ≈ grad
-    @test laplace ≈ div*grad
-
-
-    # @testset "projection" begin
-        # for l in 0:lmax
-            # for m in -l:l
-                # ylm = map(sh, (μ,ν)->scalarsph(l,m,μ,ν))
-                # ψlm = map(sh, (μ,ν)->gradsh(1,l,m,μ,ν), (μ,ν)->gradsh(2,l,m,μ,ν))
-                # e1  = l1(s*(s̄*ylm) - ylm)
-                # e2  = l1(v*(v̄*ψlm) - ψlm)
-                # @test e1 < 1e-10
-                # @test e2 < 1e-10
-            # end
+# @testset "laplace" begin
+    # for l in 0:lmax
+        # for m in -l:l
+            # Ylm = map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
+            # Ψlm = map(SH, (μ,ν)->GradSH(1,l,m,μ,ν), (μ,ν)->GradSH(2,l,m,μ,ν))
+            # @test isapprox(laplace*Ylm, -l*(l+1)*Ylm; atol=1e-10)
         # end
-    # end;
-    
-    @testset "grad" begin
-        for l in 0:lmax
-            for m in -l:l
-                Ylm = map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
-                Ψlm = map(SH, (μ,ν)->GradSH(1,l,m,μ,ν), (μ,ν)->GradSH(2,l,m,μ,ν))
-                @test isapprox(grad*Ylm, Ψlm; atol=1e-10)
-            end
-        end
-    end;
+    # end
+# end;
 
-    @testset "divergence" begin
-        for l in 0:lmax
-            for m in -l:l
-                Ylm = map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
-                Ψlm = map(SH, (μ,ν)->GradSH(1,l,m,μ,ν), (μ,ν)->GradSH(2,l,m,μ,ν))
-                E1  = L1(div*Ψlm + l*(l+1)*Ylm)
-                @test isapprox(div*Ψlm, -l*(l+1)*Ylm, atol=1e-10)
-            end
-        end
-    end;
+using PyPlot
+F = eigen(laplace)
+@show maximum(abs.(imag.(F.values)))
 
-    @testset "laplace" begin
-        for l in 0:lmax
-            for m in -l:l
-                Ylm = map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
-                Ψlm = map(SH, (μ,ν)->GradSH(1,l,m,μ,ν), (μ,ν)->GradSH(2,l,m,μ,ν))
-                @test isapprox(div*(grad*Ylm), -l*(l+l)*Ylm, atol=1e-10)
-            end
-        end
-    end;
-    
-end;
 
+@show real.(F.values)
+
+# plot(sort(abs.(F.values))[1:10], "r-o")
+# savefig("Fuckthisshit.pdf")
