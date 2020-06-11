@@ -1,98 +1,129 @@
 #---------------------------------------------------------------
 # LaplaceOnASphere
-# Soham 3/20
+# Soham 6/20
 #
 # Construct the Laplace operator in local coordinates using 
 # Spherical harmonics
 # We have 1/|g| d/dx^i (|g| g^ij dϕ/dx^j) 
-# As an operator we write the above expression as 
-#    1\|g| d/dx^i (Ψ_lm inv(Ψ_lm) S(|g|) S(gij) Ψ_lm [ϕ^lm])
-#                       |---------------------------------|  
-#                                   ϕ′_lm
-#    S(1\|g|) l(l+1) Y_lm ϕ′_lm 
-#    S(1\|g|) l(l+1) Y_lm inv(Ψ_lm) S(|g|) S(gij) Ψ_lm [ϕ^lm]
-#    Δ*ϕ_lm = l(l+1) Ylm*ϕ_lm = L(l)*𝐘*ϕ
-#
-#    q: beautiful round sphere metric
-#    Ȳ[^lm'', _kl] S(1/g)[^kl]  Y[^kl, _lm'] S(ll)[^lm'] Ψ̄[^lm'b, _ij] g[^ij] gab[^ij, _ab] Ψ[^ija, _lm] ϕ[^lm]
-#
-#    |h| = |g| / |q|
-#    inv(h) = q inv(g)
-#    h^ab = δ^a_c q_cd g^db
-#
-# where S(f) is the diagonal operators for scaling
-# and we've used the fact that ∇.(ϕ^lm Ψ_lm) = l(l+1) ϕ^lm Y_lm 
-# See <R G Barrera et al 1985 Eur. J. Phys. 6 287> 
-# for reference and introduction to VSH. 
+# where x^i = {μ, ν} and g = ({1, 0}, {0, sin(θ)^2}}
+# We work with a general metric h and we shoe-horn 
+# the metric g in there. 
+# We have 1/|h| d/dx^i (|h| h^ij dϕ/dx^j) 
+# We have |g|/|h| 1/|g| d/dx^i (|g| |h|/|g| δ^i_m h^mj dϕ/dx^j) 
+# or  |g|/|h| 1/|g| d/dx^i (|g| |h|/|g| g^in g_nm h^mj dϕ/dx^j) 
+# or  |g|/|h| 1/|g| d/dx^i (|g| g^in |h|/|g|  g_nm h^mj dϕ/dx^j) 
+# or  |g|/|h| 1/|g| d/dx^i (|g| g^in β_n) 
+# or  |g|/|h| Ylm (-l*(l+1)) β^lm_n
 #---------------------------------------------------------------
 
-using LinearAlgebra, PyPlot
+using LinearAlgebra
 
 #---------------------------------------------------------------
-# Functions needed for scaling
+# Functions for constructing the scaling operators
 #---------------------------------------------------------------
 
-function ll(l::Int, m::Int)::Int
-    return l*(l+1)
-end
-
-function invsqrtdetg(θ::T, ϕ::T)::Complex{T} where {T}
-    return 1/sqrtdetg(1, 1, θ, ϕ)
-end
-
-function invgab(a::Int, b::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    @assert (1 <= a <= 2) && (1 <= b <= 2)
-    return invhab(SH, a, b, θ, ϕ)
-    # if a == 1 && b == 1
-        # return 1
-    # elseif a == 2 && b == 2
-        # return 1/sin(θ)^2
-    # else
-        # return 0
-    # end
-end
-
-function sqrtdetg(a::Int, b::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    @assert (1 <= a <= 2) && (1 <= b <= 2)
-    if a == b
-        return sqrtdeth(SH, θ, ϕ)
-        # return abs(sin(θ))
+function hinv(a::Int, b::Int, μ::Float64, ν::Float64)::Float64
+    if a == b == 1
+        return 1
+    elseif a == b == 2
+        return 1/sin(μ)^2
     else
         return 0
     end
 end
 
+function sqrt_detg_by_deth(μ::Float64, ν::Float64)::Float64
+    dethinv = -hinv(1,2,μ,ν)*hinv(2,1,μ,ν) + hinv(1,1,μ,ν)*hinv(2,2,μ,ν)
+    return sin(μ)*sqrt(dethinv)
+end
+
+function sqrt_deth_by_detg_g_hinv(a::Int, b::Int, μ::Float64, ν::Float64)::Float64
+   dethinv = -hinv(1,2,μ,ν)*hinv(2,1,μ,ν) + hinv(1,1,μ,ν)*hinv(2,2,μ,ν)
+   deth    = 1/dethinv
+   if a == 1
+       return sqrt(deth)*csc(μ)*hinv(a,b,μ,ν)
+   else
+       return sqrt(deth)*sin(μ)*hinv(a,b,μ,ν) 
+   end
+end
+
+function divergence(l::Int, m::Int)::Int
+    return -l*(l+1)
+end
+
 #---------------------------------------------------------------
-# Construct the operator
+# Construct the operators
 #---------------------------------------------------------------
 
-SH = SphericalHarmonics{Float64}(4, 10)
-take_me_to_the_vector_modes = nodal_to_modal_vector_op(SH)
-take_me_to_the_vector_nodes = modal_to_nodal_vector_op(SH)
-take_me_to_the_scalar_nodes = modal_to_nodal_scalar_op(SH)
-take_me_to_the_scalar_modes = nodal_to_modal_scalar_op(SH)
-scale_with_invgab = scaling_vector_op(SH, invgab)
-scale_with_sqrtdetg = scaling_vector_op(SH, sqrtdetg) 
-scale_with_invsqrtdetg = scaling_scalar_op(SH, invsqrtdetg) 
-scale_the_modes = modal_scaling_op(SH, ll)
+SH = SphericalHarmonics(12)
+lmax = 3
 
-Δ = (take_me_to_the_scalar_modes*scale_with_invsqrtdetg*take_me_to_the_scalar_nodes*scale_the_modes*
-      take_me_to_the_vector_modes*scale_with_sqrtdetg*scale_with_invgab*take_me_to_the_vector_nodes)
+S = modal_to_nodal_scalar_op(SH) 
+S̄ = nodal_to_modal_scalar_op(SH)
+V = modal_to_nodal_vector_op(SH)
+V̄ = nodal_to_modal_vector_op(SH) 
+
+D = scale_scalar(SH, sqrt_detg_by_deth)
+H = scale_vector(SH, sqrt_deth_by_detg_g_hinv)
+L = scale_lmodes(SH, divergence) 
+
+grad    = V*S̄
+div     = S*L*V̄
+laplace = D*div*(H*grad)
 
 #---------------------------------------------------------------
-# Compute eigenvalues and eigenvectors of the operator
+# test laplace, and if that doesn't work 
+# check grad, div and scaling
 #---------------------------------------------------------------
-F = eigen(Δ)
+@testset "all" begin
 
-# @assert maximum(imag.(F.values)) < 1e-10
-eigenvalues = F.values
-plot(real(eigenvalues[1:15]), "-o")
-savefig("./eigenvalues.pdf")
-close()
+    @test H*grad ≈ grad
+    @test laplace ≈ div*grad
 
-# for k in 1:9
-    # contourf(SH, take_me_to_the_scalar_nodes*F.vectors[:, k])
-    # savefig("./eigenvector$k.pdf")
-    # close()
-# end
+
+    # @testset "projection" begin
+        # for l in 0:lmax
+            # for m in -l:l
+                # ylm = map(sh, (μ,ν)->scalarsph(l,m,μ,ν))
+                # ψlm = map(sh, (μ,ν)->gradsh(1,l,m,μ,ν), (μ,ν)->gradsh(2,l,m,μ,ν))
+                # e1  = l1(s*(s̄*ylm) - ylm)
+                # e2  = l1(v*(v̄*ψlm) - ψlm)
+                # @test e1 < 1e-10
+                # @test e2 < 1e-10
+            # end
+        # end
+    # end;
+    
+    @testset "grad" begin
+        for l in 0:lmax
+            for m in -l:l
+                Ylm = map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
+                Ψlm = map(SH, (μ,ν)->GradSH(1,l,m,μ,ν), (μ,ν)->GradSH(2,l,m,μ,ν))
+                @test isapprox(grad*Ylm, Ψlm; atol=1e-10)
+            end
+        end
+    end;
+
+    @testset "divergence" begin
+        for l in 0:lmax
+            for m in -l:l
+                Ylm = map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
+                Ψlm = map(SH, (μ,ν)->GradSH(1,l,m,μ,ν), (μ,ν)->GradSH(2,l,m,μ,ν))
+                E1  = L1(div*Ψlm + l*(l+1)*Ylm)
+                @test isapprox(div*Ψlm, -l*(l+1)*Ylm, atol=1e-10)
+            end
+        end
+    end;
+
+    @testset "laplace" begin
+        for l in 0:lmax
+            for m in -l:l
+                Ylm = map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
+                Ψlm = map(SH, (μ,ν)->GradSH(1,l,m,μ,ν), (μ,ν)->GradSH(2,l,m,μ,ν))
+                @test isapprox(div*(grad*Ylm), -l*(l+l)*Ylm, atol=1e-10)
+            end
+        end
+    end;
+    
+end;
 

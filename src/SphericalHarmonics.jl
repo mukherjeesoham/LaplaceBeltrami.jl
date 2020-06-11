@@ -2,11 +2,12 @@
 # LaplaceOnASphere
 # Soham 3/20
 # Compute scalar and tensor spherical harmonics
-# VectorSPH = ∇ScalarSPH
+# Ψ = ∇Y
+# Φ = e^b_a ∇Y
 #---------------------------------------------------------------
 
 using GSL
-export ScalarSPH, VectorSPH, dYdθ, dYdϕ
+export ScalarSPH, dYdθ, dYdϕ, GradSH, CurlSH
 abstol = 1e-5
 
 function unpack(x::gsl_sf_result)
@@ -42,9 +43,19 @@ function dYdϕ(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
     return im*m*ScalarSPH(l,m,θ,ϕ)
 end
 
-function VectorSPH(l::Int, m::Int, θ::T, ϕ::T)::NTuple{2, Complex{T}} where {T}
-    # TODO: Generalize for an arbitrary metric. 
-    dYdθ = m*cot(θ)*ScalarSPH(l,m,θ,ϕ) + sqrt((l-m)*(l+m+1))*cis(-ϕ)*ScalarSPH(l,m+1,θ,ϕ)
-    dYdϕ = im*m*ScalarSPH(l,m,θ,ϕ)
-    return (dYdθ, (1/sin(θ))*dYdϕ)
+function GradSH(a::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
+    if a  == 1
+        return dYdθ(l,m,θ,ϕ)
+    elseif a == 2
+        return dYdϕ(l,m,θ,ϕ)
+    end
 end
+
+function CurlSH(a::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
+    if a  == 1
+        return  dYdϕ(l,m,θ,ϕ)
+    elseif  a == 2
+        return -dYdθ(l,m,θ,ϕ)
+    end
+end
+

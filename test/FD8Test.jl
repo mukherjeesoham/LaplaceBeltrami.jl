@@ -5,120 +5,10 @@
 # the symmetries around the poles for scalars and vectors
 #---------------------------------------------------------------
 
-using SparseArrays, LinearAlgebra, PyPlot
-
-function map(u::Function, ni::Int, nj::Int)
-    scalar = zeros(Complex{Float64}, ni, nj)
-    for index in CartesianIndices(scalar)
-        scalar[index] = u(collocation(index.I..., ni, nj)...) 
-    end
-    return vec(scalar)
-end
-
-function Base.join(i::Int, j::Int, ni::Int, nj::Int)::Int
-    return LinearIndices((ni, nj))[i,j]
-end
-
-function Base.split(ij::Int, ni::Int, nj::Int)
-    return CartesianIndices((ni, nj))[ij].I
-end
-
-function collocation(i::Int, j::Int, ni::Int, nj::Int)
-    @assert 1 <= i <= ni
-    @assert 1 <= j <= nj
-    theta = (i-1/2)*(π/ni)
-    phi   = (j-1)*(2π/nj)
-    return (theta, phi)
-end
-
-function wrap(i::Int, j::Int, ni::Int, nj::Int)
-    @assert iseven(nj)
-    if i < 1 # north pole
-        i = 1 - i 
-        j = mod1(j + nj÷2, nj)
-    elseif i > ni # south pole
-        i = 2ni + 1 - i 
-        j = mod1(j + nj÷2, nj)
-    elseif j < 1 ||  j > nj  # crossing 0 or 2π
-        j = mod1(j, nj)
-    end
-    return (i,j)
-end
-
-function flipsign(i::Int, ni::Int)
-    if i < 1 || i > ni # across the poles
-        return -1
-    else
-        return +1
-    end
-end
-
-function stencil(order::Int, index::Int)
-    if order == 2
-        return (-1/2, 0, 1/2)[index+2]
-    elseif order == 4
-        return (1/12, -2/3, 0, 2/3, -1/12)[index+3]
-    elseif order == 6
-        return (-1/60, 3/20, -3/4, 0, 3/4, -3/20, 1/60)[index+4]
-    elseif order == 8
-        return (1/280, -4/105, 1/5, -4/5, 0, 4/5, -1/5, 4/105, -1/280)[index+5]	
-    else
-        errorexit("Invalid order")
-    end
-end
-
-function Dθ(ni::Int, nj::Int, order::Int)
-    I, J, V = (Int[], Int[], Float64[])
-    for i in 1:ni, j in  1:nj
-        for Δi in -order÷2:order÷2
-            push!(I, join(i, j, ni, nj)) 
-            push!(J, join(wrap(i+Δi, j, ni, nj)..., ni, nj)) 
-            push!(V, stencil(order, Δi))
-        end
-    end 
-    return dropzeros(sparse(I, J, V/(π/ni)))
-end
-
-function Dϕ(ni::Int, nj::Int, order::Int)
-    I, J, V = (Int[], Int[], Float64[])
-    for i in 1:ni, j in  1:nj
-        for Δj in -order÷2:order÷2
-            push!(I, join(i, j, ni, nj)) 
-            push!(J, join(wrap(i, j+Δj, ni, nj)..., ni, nj)) 
-            push!(V, stencil(order, Δj))
-        end
-    end 
-    return dropzeros(sparse(I, J, V/(2π/nj)))
-end
-
-function Dθ̄(ni::Int, nj::Int, order::Int)
-    I, J, V = (Int[], Int[], Float64[])
-    for i in 1:ni, j in  1:nj
-        for Δi in -order÷2:order÷2
-            push!(I, join(i, j, ni, nj)) 
-            push!(J, join(wrap(i+Δi, j, ni, nj)..., ni, nj)) 
-            push!(V, flipsign(i+Δi, ni)*stencil(order, Δi))
-        end
-    end 
-    return dropzeros(sparse(I, J, V/(π/ni)))
-end
-
-function Dϕ̄(ni::Int, nj::Int, order::Int)
-    return Dϕ(ni, nj, order)
-end
-
-function S0(ni::Int, nj::Int, u::Function)
-    I, J, V = (Int[], Int[], Complex{Float64}[])
-    for j in 1:nj, i in  1:ni
-        push!(I, join(i, j, ni, nj))
-        push!(J, join(i, j, ni, nj)) 
-        push!(V, u(collocation(i, j, ni, nj)...))
-    end
-    return sparse(I,J,V)
-end
+using PyPlot, Arpack
 
 #---------------------------------------------------------------
-# Convert to higher order operators
+# Test convergence 
 #---------------------------------------------------------------
 
 if true
@@ -142,6 +32,7 @@ if true
         E1[index] = LInf(D1*Ylm - dYlmdθ)
         E2[index] = LInf(D2*Ylm - dYlmdϕ)
 
+        # Laplace with the sinθ factors taken out
         D1̄, D2̄ = (Dθ̄(N1, N2, order), Dϕ̄(N1, N2, order))
         S2 = S0(N1, N2, (x,y)->1/sin(x)^2)
         S1 = S0(N1, N2, (x,y)->cos(x)/sin(x))
@@ -157,4 +48,93 @@ if true
     savefig("convergence.pdf")
     close()
 end
+
+if true
+    order  = 8
+    @time N1, N2 = (30, 40)
+    @time D1, D2 = (Dθ(N1, N2, order), Dϕ(N1, N2, order))
+    @time D1̄, D2̄ = (Dθ̄(N1, N2, order), Dϕ̄(N1, N2, order))
+    @time S2     = S0(N1, N2, (x,y)->1/sin(x)^2)
+    @time S1     = S0(N1, N2, (x,y)->cos(x)/sin(x))
+    @time laplace = S1*D1 + D1̄*D1 + S2*D2̄*D2
+    @time λ, ϕ = eigs(laplace; nev=20, which=:SM)
+    
+    λexp = []
+    for l in 0:10
+        for m in -l:l
+            append!(λexp, -l*(l+1))
+        end
+    end
+    
+    plot(λ, "ro")
+    plot(λexp[1:10], "g-o"; markersize=4)
+    savefig("eigenvalues.pdf")
+    close()
+
+    for i in 1:7
+        imshow(reshape(real.(ϕ[:,i]), N1, N2))
+        colorbar()
+        savefig("eigenfunc$i.pdf")
+        close()
+    end
+
+end
+
+#---------------------------------------------------------------
+# Do a coordinate transformation and check if 
+# we recover the eigenfunctions
+# We work with the coordinates μ, ν.
+# Ideally, we'd want to take the derivatives of the tensor
+# components numerically, but then again, we'll need
+# to define new derivative operators that take into account
+# the parity of the tensor components across the poles. 
+# See Table 1 in <https://arxiv.org/abs/1211.6632>
+#---------------------------------------------------------------
+
+N1, N2 = 10, 20
+Dμ, Dν = Dθ(N1, N2), Dϕ(N1, N2)
+Dμ̄, Dν̄ = Dθ̄(N1, N2), Dϕ̄(N1, N2)
+
+h11   = S0(N1, N2, (μ,ν)->1)
+h12   = h21 = S0(N1, N2, (μ,ν)->0)
+h22   = S0(N1, N2, (μ,ν)->1)
+csc2μ = S0(N1, N2, (μ,ν)->csc(μ)^2)
+cscμ  = S0(N1, N2, (μ,ν)->csc(μ))
+cotμ  = S0(N1, N2, (μ,ν)->cot(μ))
+
+# Compute the tensor component derivatives in advance
+# These parity conditions however, are not complicated
+# for the operations on tensors and "work" the same way
+# as for scalars; i.e. no sign change. 
+D1h11 = Dμ*h11 
+D2h11 = Dν*h11
+D1h12 = D1h21 = Dμ*h12
+D2h12 = D2h21 = Dν*h12
+D1h22 = Dμ*h22
+D2h22 = Dν*h22
+
+D1    = Dμ
+D2    = Dν
+D1D1  = Dμ̄*Dμ
+D2D2  = Dν̄*Dν
+D1D2  = Dμ̄*Dν
+D2D1  = Dν̄*Dμ
+invdetg2 = 1/((h12*h21 - h11*h22).^2)
+
+# Now construct the laplace operator
+# TODO: Figure out D1D2 or D2D1 for the mixed derivatives
+laplace = (invdetg2*(-h12*h21*h22 + h11*h22*h22)*D1D1 
+         + invdetg2*(-h11*h22*h21*csc2μ + h11*h11*h22*csc2μ)*D2*D2
+         + invdetg2*((1/2)*D2h22*h11*h11*csc2μ + (1/2)*D2h21*h11*h12*csc2μ 
+                     + (1/2)*D2h12*h11*h21*csc2μ - D2h11*h12*h21*csc2μ 
+                     + (1/2)*D2h11*h11*h22*csc2μ + (1/2)*D1h22*h11*h12*cscμ 
+                     - (1/2)*D1h21*h12*h12*cscμ  + (1/2)*D1h12*h12*h21*cscμ 
+                     - D1h12*h11*h22*cscμ + (1/2)*D1h11*h12*h22*cscμ)*D2
+         + invdetg2*(-D1h22*h12*h21 + (1/2)*D1h22*h11*h22 
+                     + D1h21*h12*h22 + (1/2)*D1h12*h21*h22
+                     - (1/2)*D1h11*h22*h22 - h12*h21*h22*cotμ 
+                     + h11*h22*h22*cotμ + D2h22*h11*h21*cscμ
+                     + (1/2)*D2h21*h12*h21*cscμ  - (1/2)*D2h12*h21*h21*cscμ
+                     - D2h21*h11*h22*cscμ + (1/2)*D2h11*h21*h22*cscμ)*D1
+         + invdetg2*(h12*h12*cscμ + h12*h21*h21*cscμ - h11*h12*h22*cscμ - h11*h21*h22*cscμ)*D1D2) 
 

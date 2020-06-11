@@ -1,7 +1,6 @@
 using LaplaceOnASphere, Test
 
-libraries = ["Transformation", "Operator", "Jacobian", "Metric", "Eigen"]
-libraries = ["FD8"]
+libraries = ["Eigen"]
 
 for file in libraries
     @info "Testing $file"
