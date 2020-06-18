@@ -4,7 +4,7 @@
 # Utitilies for collocation
 #---------------------------------------------------------------
 
-export LInf, L2, L1
+export LInf, L2, L1, onlyreal
 
 function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
     # NOTE: Driscoll and Healy points have a collocation point at the poles. 
@@ -64,3 +64,12 @@ end
 function L2(x::Array{T,1}) where {T}
     return sqrt(sum(abs.(x).^2))
 end
+
+function onlyreal(u::Array)::Bool
+    maximum(abs.(imag.(u))) < 1e-10
+end
+
+function Base. reshape(SH::SphericalHarmonics, u::Array{T,1})::Array{T,2} where {T}
+    return reshape(u, (SH.N, 2*SH.N))
+end
+
