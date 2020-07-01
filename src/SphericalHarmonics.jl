@@ -8,7 +8,7 @@
 
 using GSL
 export ScalarSPH, dYdθ, dYdϕ, GradSH, CurlSH
-abstol = 1e-5
+abstol = 1e-8
 
 function unpack(x::gsl_sf_result)
     return x.val, x.err

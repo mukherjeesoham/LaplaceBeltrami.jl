@@ -71,7 +71,25 @@ function scale_lmodes(S::SphericalHarmonics{T}, g::Function)::Array{T,2} where {
 
 end
 
-function scale_vector(S::SphericalHarmonics{T}, g::Function)::Array{T, 2} where {T}
+function Base. filter(S::SphericalHarmonics{T}, lcutoff::Int)::Array{T,2} where {T}
+    lmax = S.lmax
+    A = zeros(T, (lmax)^2 + 2*(lmax)+1, (lmax)^2 + 2*(lmax)+1)
+    for index in CartesianIndices(A)
+        P, Q = index.I
+        l,m = split(P)
+        p,q = split(Q)
+        if (l, m) == (p,q)
+            if l > lcutoff
+                A[index] = 0.0
+            else
+                A[index] = 1.0
+            end
+        end
+    end
+    return A
+end
+
+function scale_vector(S::SphericalHarmonics{T}, g::Function)::Array{Complex{T}, 2} where {T}
     N = S.N
     A = zeros(Complex{T}, 2N*2N, 2N*2N)
     for index in CartesianIndices(A)
