@@ -186,7 +186,11 @@ function integrate(SH::SphericalHarmonics{T}, u::Array{Complex{T}})::Complex{T} 
     return sqrt(4π)*ulm[1]
 end
 
+# int f \sqrt(h) dμ dν
+# int f  \sqrt(h) / \sqrt(g)     \sqrt(g) du dν
+
 function LinearAlgebra.dot(SH::SphericalHarmonics, u::Array{T,1}, v::Array{T,1})::T where {T}
+    # FIXME: Raise the index 
     return integrate(SH, conj(u).*v)
 end
 
