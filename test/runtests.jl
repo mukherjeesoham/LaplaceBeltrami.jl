@@ -1,6 +1,6 @@
 using LaplaceOnASphere, Test
 
-libraries = ["Debug"]
+libraries = ["Monday"]
 
 for file in libraries
     @info "Testing $file"
