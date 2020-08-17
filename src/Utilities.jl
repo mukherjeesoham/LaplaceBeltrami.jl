@@ -4,7 +4,7 @@
 # Utitilies for collocation
 #---------------------------------------------------------------
 
-export LInf, L2, L1, onlyreal, project, filter!, query
+export LInf, L2, L1, onlyreal, project, filter!, query, collocation
 export ScalarSPH
 
 function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
@@ -12,6 +12,7 @@ function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} whe
     # This won't work for us at the moment since Ψ breaks down at the poles.
     # Currently using ECP collocation points. 
     # FIXME: Add an @assert statement
+    # TODO: Try the Driscoll and Healy points to integrate a function on the sphere. 
     θ = (i-1/2)*(π/S.N)  # [0,  π]
     ϕ = (j-1)*(π/S.N)    # [0, 2π]
     return (θ, ϕ)
