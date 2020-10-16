@@ -4,15 +4,11 @@
 # Utitilies for collocation
 #---------------------------------------------------------------
 
-export LInf, L2, L1, onlyreal, project, filter!, query, collocation
-export ScalarSPH
+export max_coefficent_for_each_l, L2
 
 function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
     # NOTE: Driscoll and Healy points have a collocation point at the poles. 
-    # This won't work for us at the moment since Ψ breaks down at the poles.
-    # Currently using ECP collocation points. 
-    # FIXME: Add an @assert statement
-    # TODO: Try the Driscoll and Healy points to integrate a function on the sphere. 
+    #       Currently using ECP collocation points. 
     θ = (i-1/2)*(π/S.N)  # [0,  π]
     ϕ = (j-1)*(π/S.N)    # [0, 2π]
     return (θ, ϕ)
@@ -40,59 +36,34 @@ function Base. map(S::SphericalHarmonics{T}, uθ::Function, uϕ::Function)::Arra
     return uvec
 end
 
-function analyticYlm(S::SphericalHarmonics{T}, ulm::Array{Complex{T}, 1}, θ::T, ϕ::T)::Complex{T} where {T}
-    u = Complex(T(0))
-    for l in 0:S.lmax, m in -l:l
-        u += ulm[join(l,m)]*ScalarSPH(l, m, θ, ϕ)
-    end 
-    return u
-end
-
-function analyticΨlm(S::SphericalHarmonics{T}, ulm::Array{Complex{T}, 1}, θ::T, ϕ::T, a::Int)::Complex{T} where {T}
-    u = Complex(T(0))
-    for l in 0:S.lmax, m in -l:l
-        u += ulm[join(l,m)]*GradSH(a, l, m, θ, ϕ)
-    end 
-    return u
-end
-
 function LInf(x::Array{T,1}) where {T}
     return maximum(abs.(x))
 end
 
-function L1(x::Array{T,1}) where {T}
-    return sum(abs.(x))
+function quad(SH::SphericalHarmonics{T}, s::Array{Complex{T},1})::T where {T}
+    integral = (nodal_to_modal_scalar_op(SH)*s)[1] 
+    @assert imag(integral) < 1e-12
+    return sqrt(4π)*real(integral)
 end
 
-function L2(x::Array{T,1}) where {T}
-    return sqrt(sum(abs.(x).^2))
+function L1(SH::SphericalHarmonics{T}, x::Array{Complex{T},1})::T where {T}
+    return quad(SH, abs.(x))
+end
+
+function L2(SH::SphericalHarmonics{T}, x::Array{Complex{T},1})::T where {T}
+    return sqrt(quad(SH, conj(x).*x))
 end
 
 function onlyreal(u::Array)::Bool
     maximum(abs.(imag.(u))) < 1e-10
 end
 
-function Base. reshape(SH::SphericalHarmonics, u::Array{T,1})::Array{T,2} where {T}
-    return reshape(u, (SH.N, 2*SH.N))
-end
-
-function project(SH::SphericalHarmonics, l::Int, m::Int)
-    S̄ = nodal_to_modal_scalar_op(SH)
-    V = modal_to_nodal_vector_op(SH)
-    V̄ = nodal_to_modal_vector_op(SH) 
-    H = scale_vector(SH, sqrt_deth_by_detg_g_hinv)
-    Y = map(SH, (μ,ν)->ScalarSPH(l,m, θ(μ,ν), ϕ(μ,ν)))
-    return real.(V̄*H*V*S̄*Y)
-end
-    
-function Base.filter!(SH::SphericalHarmonics, u::Array{T,1})::Array{T,1} where {T}
-    for lm in CartesianIndices(u)
-        l, m = split(lm.I...)
-        if m != 0
-            u[lm] = 0.0
-        end
+function Base. reshape(SH::SphericalHarmonics, u::Array{T,1}, L::Symbol)::Array{T,2} where {T}
+    if L == :scalar
+        return reshape(u, (SH.N, 2*SH.N))
+    elseif L == :vector 
+        return reshape(u, (SH.N, 2*SH.N, 2))
     end
-    filter!(!iszero, u)
 end
 
 function query(SH::SphericalHarmonics, F::Eigen, l::Int, kind::Symbol)
@@ -111,6 +82,32 @@ function query(SH::SphericalHarmonics, F::Eigen, l::Int, kind::Symbol)
     return reshape(vectors, (:, 2l+1))
 end
 
-function ScalarSPH(SH::SphericalHarmonics, l::Int, m::Int)
-    return map(SH, (μ,ν)->ScalarSPH(l,m,μ,ν))
+function max_coefficent_for_each_l(SH::SphericalHarmonics{T}, umodal::Array{Complex{T},1}) where {T}
+    labs = zeros(T, SH.lmax+1)
+    for l in 0:SH.lmax
+        lm = zeros(T, 2*l + 1)
+        for m in -l:l
+            lm[m+l+1] = abs(umodal[join(l,m)])
+        end
+        labs[l+1] = maximum(lm)
+    end
+    return labs 
+end
+
+function Base. filter(S::SphericalHarmonics{T}, lcutoff::Int)::Array{T,2} where {T}
+    lmax = S.lmax
+    A = zeros(T, (lmax)^2 + 2*(lmax)+1, (lmax)^2 + 2*(lmax)+1)
+    @inbounds for index in CartesianIndices(A)
+        P, Q = index.I
+        l,m = split(P)
+        p,q = split(Q)
+        if (l, m) == (p,q)
+            if l > lcutoff
+                A[index] = 0.0
+            else
+                A[index] = 1.0
+            end
+        end
+    end
+    return A
 end

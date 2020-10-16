@@ -28,6 +28,7 @@ for l in 4:lmax
     u = map(S, (θ, ϕ)->ScalarSPH(2, 0, θ, ϕ))
     L = nodal_to_modal_scalar_op(S)
     P = modal_to_nodal_scalar_op(S)
+    # FIXME: Check if you can push the error down. 
     @test L1(u - P*(L*u)) < 1e-9
     ũ = L*u
     @test L1(ũ - L*(P*ũ)) < 1e-12

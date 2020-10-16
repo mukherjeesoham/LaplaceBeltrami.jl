@@ -1,6 +1,11 @@
-using LaplaceOnASphere, Test
+#---------------------------------------------------------------
+# LaplaceOnASphere
+# Soham 8/20
+#---------------------------------------------------------------
+using Test, LaplaceOnASphere
 
-libraries = ["Monday"]
+libraries = ["Orthogonality"]
+libraries = ["Coupling"]
 
 for file in libraries
     @info "Testing $file"
