@@ -4,14 +4,15 @@
 # Utitilies for collocation
 #---------------------------------------------------------------
 
+using FastGaussQuadrature
 export max_coefficent_for_each_l, L2
 
 function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
-    # NOTE: Driscoll and Healy points have a collocation point at the poles. 
-    #       Currently using ECP collocation points. 
-    θ = (i-1/2)*(π/S.N)  # [0,  π]
-    ϕ = (j-1)*(π/S.N)    # [0, 2π]
-    return (θ, ϕ)
+    lmax, N = S.lmax, S.N
+    nodes, weights = gausslegendre(N)
+    theta = -(T(π)/2).*nodes .+ T(π)/2  
+    phi   = (j-1)*(T(π)/N)  
+    return (theta[i], phi)
 end
 
 function Base. map(S::SphericalHarmonics{T}, u::Function)::Array{Complex{T}, 1} where {T}

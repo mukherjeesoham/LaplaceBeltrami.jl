@@ -4,8 +4,9 @@
 #---------------------------------------------------------------
 using Test, LaplaceOnASphere
 
-libraries = ["Orthogonality"]
 libraries = ["Coupling"]
+libraries = ["Quadrature"]
+libraries = ["Convergence"]
 
 for file in libraries
     @info "Testing $file"

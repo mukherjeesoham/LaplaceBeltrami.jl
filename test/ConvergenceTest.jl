@@ -7,8 +7,8 @@
 
 using PyPlot
 
-SH = SphericalHarmonics(30)
-# @test deth(π/4, π/6) ≈ 0.6583073877333249
+SH = SphericalHarmonics{Float64}(20, 81)
+@test deth(π/4, π/6) ≈ 0.6583073877333249
 
 function only_sqrt_deth_by_detq(a::Int, b::Int, μ::T, ν::T)::T where {T}
     if a == b
@@ -18,16 +18,15 @@ function only_sqrt_deth_by_detq(a::Int, b::Int, μ::T, ν::T)::T where {T}
     end
 end
 
-
 # Compute the operators
 @time S, S̄ = scalar_op(SH)
-@time V, V̄ = vector_op(SH)
-@time H = scale_vector(SH, sqrt_deth_by_detq_q_hinv)
-@time H1 = scale_vector(SH, q_hinv)
-@time H2 = scale_vector(SH, only_sqrt_deth_by_detq)
+@time V, V̄ = grad_op(SH)
+@time H    = scale_vector(SH, sqrt_deth_by_detq_q_hinv)
+@time L    = scale_lmodes(SH, (l,m)->-l*(l+1))
+@time W    = scale_scalar(SH, (μ,ν)->sqrt(detq(μ,ν)/deth(μ,ν)))  
 
 # Compute the fields
-nf  = map(SH, (μ,ν)->analyticF(2,1,μ,ν)) 
+nf  = map(SH, (μ,ν)->analyticF(1,1,μ,ν)) 
 ∇nf = V*(S̄*nf) 
 
 # Plot the fall-off of the coefficents and the vector components
@@ -45,7 +44,7 @@ function filter_low_modes(ulm::Array{T,1})::Array{T,1} where {T}
 end
 
 # See which operation messes with the smoothness
-if true
+if false
     semilogy(filter_low_modes(V̄*(H2*(H1*∇nf))), "r-^", linewidth=0.4, label="H1*H2")
     semilogy(filter_low_modes(V̄*(H1*∇nf)), "b-v", linewidth=0.4, label="H1")
     semilogy(filter_low_modes(V̄*(H2*∇nf)), "k-o", linewidth=0.4, label="H2")
@@ -54,15 +53,12 @@ if true
     show()
 end
 
-exit()
 
 # Compute the Laplace operator and look at the residual 
-L = scale_lmodes(SH, (l,m)->-l*(l+1))
-W = scale_scalar(SH, (μ,ν)->sqrt(detq(μ,ν)/deth(μ,ν)))  
 grad = V*S̄ 
 div  = S*L*V̄  
-Δ = S̄*(W*(div*(H*grad)))
-@time S*Δ*nf
+println("Computing the Laplace Operator")
+@time Δ = S̄*(W*(div*(H*grad)))
 
 using LinearAlgebra
 @show norm(S*Δ*nf + 2*nf)
