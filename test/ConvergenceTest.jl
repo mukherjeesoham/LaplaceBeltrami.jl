@@ -5,9 +5,9 @@
 # spherical harmonics
 #---------------------------------------------------------------
 
-using PyPlot
+using PyPlot, Arpack, LinearAlgebra
 
-SH = SphericalHarmonics{Float64}(20, 81)
+SH = SphericalHarmonics(10)
 @test deth(π/4, π/6) ≈ 0.6583073877333249
 
 function only_sqrt_deth_by_detq(a::Int, b::Int, μ::T, ν::T)::T where {T}
@@ -27,39 +27,41 @@ end
 
 # Compute the fields
 nf  = map(SH, (μ,ν)->analyticF(1,1,μ,ν)) 
-∇nf = V*(S̄*nf) 
-
-# Plot the fall-off of the coefficents and the vector components
-if false
-    semilogy(max_coefficent_for_each_l(SH, S̄*nf),  "m v")
-    semilogy(max_coefficent_for_each_l(SH, V̄*∇nf), "g ^")
-    semilogy(max_coefficent_for_each_l(SH, V̄*(H*∇nf)), "r-o")
-    show()
-end
-
-function filter_low_modes(ulm::Array{T,1})::Array{T,1} where {T}
-    ul = max_coefficent_for_each_l(SH, ulm)
-    ul[abs.(ul) .< 1e-10] .= NaN
-    return ul
-end
-
-# See which operation messes with the smoothness
-if false
-    semilogy(filter_low_modes(V̄*(H2*(H1*∇nf))), "r-^", linewidth=0.4, label="H1*H2")
-    semilogy(filter_low_modes(V̄*(H1*∇nf)), "b-v", linewidth=0.4, label="H1")
-    semilogy(filter_low_modes(V̄*(H2*∇nf)), "k-o", linewidth=0.4, label="H2")
-    semilogy(filter_low_modes(V̄*∇nf), "g-s", linewidth=0.8, label="{}")
-    legend(frameon=false)
-    show()
-end
-
 
 # Compute the Laplace operator and look at the residual 
 grad = V*S̄ 
 div  = S*L*V̄  
 println("Computing the Laplace Operator")
 @time Δ = S̄*(W*(div*(H*grad)))
+@show L2(SH, S*Δ*nf + 2*nf)
 
-using LinearAlgebra
-@show norm(S*Δ*nf + 2*nf)
+# Compute eigenvectors and eigenvalues
+if false
+    # Use Arpack
+    λ, ϕ = eigs(Δ*S, nev=14, which=:SM)
+    @show real.(λ)
+    
+    for column in 2:4
+        contourf(reshape(SH, S*ϕ[:,column], :scalar))
+        l, m = split(column)
+        m    = m+1
+        savefig("PDF/$l-$m-eig.pdf")
+        close()
+    end
+end
+
+if true
+    # Use eigensolver from LinearAlgebra.
+    F = eigen(Δ*S)
+    @show sort(abs.(F.values))[2:7]
+    
+    for column in 1:6
+        contourf(reshape(SH, S*F.vectors[:, end-column], :scalar))
+        l, m = split(column+1)
+        m    = m+1
+        savefig("PDF/$l-$m-eig.pdf")
+        close()
+    end
+end
+
 

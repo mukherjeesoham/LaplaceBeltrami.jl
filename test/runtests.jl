@@ -5,8 +5,8 @@
 using Test, LaplaceOnASphere
 
 libraries = ["Coupling"]
-libraries = ["Quadrature"]
 libraries = ["Convergence"]
+libraries = ["LinearMaps"]
 
 for file in libraries
     @info "Testing $file"
