@@ -4,8 +4,8 @@
 # Utitilies for collocation
 #---------------------------------------------------------------
 
-using FastGaussQuadrature
-export max_coefficent_for_each_l, L2
+using FastGaussQuadrature, LinearAlgebra
+export L2, quad, dot, gramschmidt!, onlyreal
 
 function collocation(S::SphericalHarmonics{T}, i::Int, j::Int)::NTuple{2, T} where {T}
     lmax, N = S.lmax, S.N
@@ -37,22 +37,33 @@ function Base. map(S::SphericalHarmonics{T}, uθ::Function, uϕ::Function)::Arra
     return uvec
 end
 
-function LInf(x::Array{T,1}) where {T}
-    return maximum(abs.(x))
+function integral(SH::SphericalHarmonics{T})::Array{Complex{T},2} where {T}
+    lmax, N = SH.lmax, SH.N
+    nodes, weights = gausslegendre(N)
+    theta = -(T(π)/2).*nodes .+ T(π)/2  
+    phi   = [(j-1)*(T(π)/N) for j in 1:2N] 
+    A     = zeros(Complex{T}, lmax^2 + 2lmax + 1, 2N^2)
+    @inbounds for index in CartesianIndices(A)
+        lm, ij = Tuple(index) 
+        l, m   = split(lm) 
+        i, j   = split(ij, N) 
+        A[index] =  (π^2/2N)*weights[i]*sin(theta[i])
+    end
+    return A
 end
 
-function quad(SH::SphericalHarmonics{T}, s::Array{Complex{T},1})::T where {T}
-    integral = (nodal_to_modal_scalar_op(SH)*s)[1] 
-    @assert imag(integral) < 1e-12
-    return sqrt(4π)*real(integral)
-end
-
-function L1(SH::SphericalHarmonics{T}, x::Array{Complex{T},1})::T where {T}
-    return quad(SH, abs.(x))
+function quad(SH::SphericalHarmonics{T}, u::Array{Complex{T},1})::Complex{T} where {T}
+    SHF = SphericalHarmonics{Float64}(SH.lmax, 2*SH.N)
+    nodes, weights = gausslegendre(SHF.N)
+    S̄ = nodal_to_modal_scalar_op(SH)
+    S = modal_to_nodal_scalar_op(SHF)
+    H = integral(SHF)
+    integ = H*(S*(S̄*u))
+    return integ[1]
 end
 
 function L2(SH::SphericalHarmonics{T}, x::Array{Complex{T},1})::T where {T}
-    return sqrt(quad(SH, conj(x).*x))
+    return real(sqrt(quad(SH, conj(x).*x)))
 end
 
 function onlyreal(u::Array)::Bool
@@ -67,48 +78,17 @@ function Base. reshape(SH::SphericalHarmonics, u::Array{T,1}, L::Symbol)::Array{
     end
 end
 
-function query(SH::SphericalHarmonics, F::Eigen, l::Int, kind::Symbol)
-    vectors   = Complex{Float64}[]
-    S         = modal_to_nodal_scalar_op(SH)
-    roundFval = real.(round.(F.values))
-    for index in CartesianIndices(roundFval)
-        if roundFval[index] == -l*(l+1)
-            if kind == :nodal 
-                append!(vectors, S*F.vectors[:, index])
-            elseif kind == :modal
-                append!(vectors, F.vectors[:, index])
-            end
-        end
-    end
-    return reshape(vectors, (:, 2l+1))
+function LinearAlgebra.dot(SH::SphericalHarmonics{T}, u::Array{Complex{T},1}, v::Array{Complex{T},1})::Complex{T} where {T} 
+    H = scale_scalar(SH, (μ,ν)->sqrt(deth(μ,ν)/detq(μ,ν)))
+    return quad(SH, H*(conj(u).*v))
 end
 
-function max_coefficent_for_each_l(SH::SphericalHarmonics{T}, umodal::Array{Complex{T},1}) where {T}
-    labs = zeros(T, SH.lmax+1)
-    for l in 0:SH.lmax
-        lm = zeros(T, 2*l + 1)
-        for m in -l:l
-            lm[m+l+1] = abs(umodal[join(l,m)])
-        end
-        labs[l+1] = maximum(lm)
-    end
-    return labs 
+function gramschmidt!(SH::SphericalHarmonics{T}, u::Array{Complex{T},2})::Array{Complex{T},2} where {T}
+    u[:,1] = u[:,1]/sqrt(dot(SH, u[:,1], u[:,1]))
+    u[:,2] = u[:,2] - dot(SH, u[:,1], u[:,2]).*u[:,1]
+    u[:,2] = u[:,2]/sqrt(dot(SH, u[:,2], u[:,2]))
+    u[:,3] = u[:,3] - dot(SH, u[:,1], u[:,3]).*u[:,1] - dot(SH, u[:,2], u[:,3]).*u[:,2]
+    u[:,3] = u[:,3]/sqrt(dot(SH, u[:,3], u[:,3]))
+    return u
 end
 
-function Base. filter(S::SphericalHarmonics{T}, lcutoff::Int)::Array{T,2} where {T}
-    lmax = S.lmax
-    A = zeros(T, (lmax)^2 + 2*(lmax)+1, (lmax)^2 + 2*(lmax)+1)
-    @inbounds for index in CartesianIndices(A)
-        P, Q = index.I
-        l,m = split(P)
-        p,q = split(Q)
-        if (l, m) == (p,q)
-            if l > lcutoff
-                A[index] = 0.0
-            else
-                A[index] = 1.0
-            end
-        end
-    end
-    return A
-end

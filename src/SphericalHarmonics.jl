@@ -7,14 +7,14 @@
 #---------------------------------------------------------------
 
 using GSL
-export ScalarSH, dYdθ, dYdϕ, GradSH, CurlSH, TensorSHE, TensorSHO
-abstol = 1e-1
+export Ylm, Glm, Clm  
 
 function unpack(x::gsl_sf_result)
     return x.val, x.err
 end
 
 function safe_sf_legendre_sphPlm_e(l::Int, m::Int, θ::T)::T where {T}
+    abstol = 1e-8
     if abs(m) > l
         Yl = 0
     else
@@ -23,27 +23,28 @@ function safe_sf_legendre_sphPlm_e(l::Int, m::Int, θ::T)::T where {T}
         try
             @assert isless(abs(E), abstol)
         catch
-            @show l, m, θ, E
+            println("safe_sf_legendre_sphPlm_e exceeds abstol = $abstol at l = $l, m = $m, θ = $θ with error $E")
             @assert isless(abs(E), abstol)
         end
     end
     return Yl
 end
 
-function ScalarSH(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
+# TODO: Move to real spherical harmonics
+function Ylm(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
     Yl = safe_sf_legendre_sphPlm_e(l, m, θ)
     return Yl*cis(m*ϕ) 
 end
 
 function dYdθ(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    return m*cot(θ)*ScalarSH(l,m,θ,ϕ) + sqrt((l-m)*(l+m+1))*cis(-ϕ)*ScalarSH(l,m+1,θ,ϕ)
+    return m*cot(θ)*Ylm(l,m,θ,ϕ) + sqrt((l-m)*(l+m+1))*cis(-ϕ)*Ylm(l,m+1,θ,ϕ)
 end
 
 function dYdϕ(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    return im*m*ScalarSH(l,m,θ,ϕ)
+    return im*m*Ylm(l,m,θ,ϕ)
 end
 
-function GradSH(a::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
+function Glm(a::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
     if a  == 1
         return dYdθ(l,m,θ,ϕ)
     elseif a == 2
@@ -51,40 +52,10 @@ function GradSH(a::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
     end
 end
 
-function CurlSH(a::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
+function Clm(a::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
     if a  == 1
         return +(1/sin(θ))*dYdϕ(l,m,θ,ϕ)
     elseif  a == 2
         return -sin(θ)*dYdθ(l,m,θ,ϕ)
-    end
-end
-
-# Add tensor spherical harmonics; see D.25 in Baumgarte and Shapiro.
-function Xlm(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    return 2*im*m*dYdθ(l,m,θ,ϕ) - 2*cot(θ)*dYdϕ(l,m,θ,ϕ)
-end
-
-function Wlm(l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    return (-l*(l+1)*ScalarSH(l,m,θ,ϕ) - 2*cot(θ)*dYdθ(l,m,θ,ϕ) 
-            + ((2*m^2)/(sin(θ)^2))*ScalarSH(l,m,θ,ϕ))
-end
-
-function TensorSHE(a::Int, b::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    if a == b == 1
-        return  (1/2)*Wlm(l,m,θ,ϕ) 
-    elseif a == b == 2
-        return -(1/2)*(sin(θ)^2)*Wlm(l,m,θ,ϕ) 
-    else
-        return  (1/2)*Xlm(l,m,θ,ϕ) 
-    end
-end
-
-function TensorSHO(a::Int, b::Int, l::Int, m::Int, θ::T, ϕ::T)::Complex{T} where {T}
-    if a == b == 1
-        return -(1/(2*sin(θ)))*Xlm(l,m,θ,ϕ) 
-    elseif a == b == 2
-        return  (1/(2*sin(θ)))*(sin(θ)^2)*Xlm(l,m,θ,ϕ) 
-    else
-        return  (1/(2*sin(θ)))*(sin(θ)^2)*Wlm(l,m,θ,ϕ) 
     end
 end

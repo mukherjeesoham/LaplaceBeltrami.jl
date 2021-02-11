@@ -7,8 +7,6 @@
 #---------------------------------------------------------------
 
 using GSL, FastGaussQuadrature, LinearAlgebra, PyPlot
-# using Distributed
-# addprocs(4)
 
 function gaussquad(::Type{T}, f::Function, N::Int)::T where {T}
     u = zeros(Complex{T}, N, 2N) 
@@ -23,6 +21,8 @@ function gaussquad(::Type{T}, f::Function, N::Int)::T where {T}
     @assert abs(imag(integral)) < 1e-10
     return real(integral)
 end
+
+function integral(SH::SphericalHarmonics{T})
 
 f(μ, ν) = ScalarSH(0,0,μ,ν)
 @test isapprox(gaussquad(Float64, f, 100), 2*√π)

@@ -20,7 +20,6 @@ function theta(μ::T, ν::T)::T where {T}
     return acos(z/sqrt(x^2 + y^2 + z^2))
 end
 
-# TODO: Compute the theta derivatives numerically to test.
 function analyticF(l::Int, m::Int, μ::T, ν::T)::Complex{T} where {T} 
     return ScalarSH(l, m, theta(μ, ν), ν)
 end
@@ -61,6 +60,7 @@ function g(a::Int, b::Int, μ::T, ν::T)::T where {T}
 end
     
 function hinv(a::Int, b::Int, μ::T, ν::T)::T where {T}
+    # TODO: Test hinv for accuracy.
     d1d1 = ((5120*(649 + 45*cos(2μ) - 117*cos(4μ) + 63*cos(6μ)))/(3329198 + 157554*cos(2μ) - 46728*cos(4μ) - 161523*cos(6μ) - 5670*cos(8μ) + 3969*cos(10μ))) 
     d1d2 = 0 
     d2d1 = 0 

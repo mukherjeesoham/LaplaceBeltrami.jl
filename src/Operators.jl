@@ -2,14 +2,12 @@
 # LaplaceOnASphere
 # Soham 3/20
 # Compute operators for transforming between spaces 
+# UPDATE: Moved to gauss quadrature for going from
+# nodal to modal basis.
 #---------------------------------------------------------------
 
 using LinearAlgebra, FastGaussQuadrature
-export modal_to_nodal_scalar_op, nodal_to_modal_scalar_op
-export modal_to_nodal_grad_op, nodal_to_modal_grad_op
-export modal_to_nodal_curl_op, nodal_to_modal_curl_op
-export scalar_op, grad_op, curl_op
-export scale_scalar, scale_vector, scale_lmodes
+export grad, scalar_op
 
 function nodal_to_modal_scalar_op(SH::SphericalHarmonics{T})::Array{Complex{T},2} where {T}
     lmax, N = SH.lmax, SH.N
@@ -21,7 +19,7 @@ function nodal_to_modal_scalar_op(SH::SphericalHarmonics{T})::Array{Complex{T},2
         lm, ij = Tuple(index) 
         l, m   = split(lm) 
         i, j   = split(ij, N) 
-        A[index] =  (π^2/2N)*weights[i]*conj(ScalarSH(l, m, theta[i], phi[j]))*sin(theta[i])
+        A[index] =  (π^2/2N)*weights[i]*conj(Ylm(l, m, theta[i], phi[j]))*sin(theta[i])
     end
     return A
 end
@@ -36,7 +34,7 @@ function modal_to_nodal_scalar_op(SH::SphericalHarmonics{T})::Array{Complex{T},2
         ij, lm = Tuple(index) 
         l, m   = split(lm) 
         i, j   = split(ij, N) 
-        A[index] =  ScalarSH(l, m, theta[i], phi[j])
+        A[index] =  Ylm(l, m, theta[i], phi[j])
     end
     return A
 end
@@ -54,7 +52,7 @@ function nodal_to_modal_grad_op(SH::SphericalHarmonics{T})::Array{Complex{T},2} 
         if l == 0
             A[index ] = 0
         else
-            A[index] = (1/(l*(l+1)))*(π^2/2N)*weights[i]*conj(GradSH(a, l, m, theta[i], phi[j]))*(1 + (a-1)*cot(theta[i])^2)*sin(theta[i])
+            A[index] = (1/(l*(l+1)))*(π^2/2N)*weights[i]*conj(Glm(a, l, m, theta[i], phi[j]))*(1 + (a-1)*cot(theta[i])^2)*sin(theta[i])
         end
     end
     return A
@@ -70,7 +68,7 @@ function modal_to_nodal_grad_op(SH::SphericalHarmonics{T})::Array{Complex{T},2} 
         ija, lm  = Tuple(index) 
         l, m     = split(lm) 
         i, j, a  = split3(ija, N) 
-        A[index] = GradSH(a, l, m, theta[i], phi[j])
+        A[index] = Glm(a, l, m, theta[i], phi[j])
     end
     return A
 end
@@ -88,7 +86,7 @@ function nodal_to_modal_curl_op(SH::SphericalHarmonics{T})::Array{Complex{T},2} 
         if l == 0
             A[index] = 0
         else
-            A[index] = (1/(l*(l+1)))*(π^2/2N)*weights[i]*conj(CurlSH(a, l, m, theta[i], phi[j]))*(1 + (a-1)*cot(theta[i])^2)*sin(theta[i])
+            A[index] = (1/(l*(l+1)))*(π^2/2N)*weights[i]*conj(Clm(a, l, m, theta[i], phi[j]))*(1 + (a-1)*cot(theta[i])^2)*sin(theta[i])
         end
     end
     return A
@@ -104,24 +102,12 @@ function modal_to_nodal_curl_op(SH::SphericalHarmonics{T})::Array{Complex{T},2} 
         ija, lm  = Tuple(index) 
         l, m     = split(lm) 
         i, j, a  = split3(ija, N) 
-        A[index] = CurlSH(a, l, m, theta[i], phi[j])
+        A[index] = Clm(a, l, m, theta[i], phi[j])
     end
     return A
 end
 
-function scalar_op(SH::SphericalHarmonics{T})::NTuple{2, Array{Complex{T}}} where {T}
-    return (modal_to_nodal_scalar_op(SH), nodal_to_modal_scalar_op(SH))
-end
-
-function grad_op(SH::SphericalHarmonics{T})::NTuple{2, Array{Complex{T}}} where {T}
-    return (modal_to_nodal_grad_op(SH), nodal_to_modal_grad_op(SH))
-end
-
-function curl_op(SH::SphericalHarmonics{T})::NTuple{2, Array{Complex{T}}} where {T}
-    return (modal_to_nodal_curl_op(SH), nodal_to_modal_curl_op(SH))
-end
-
-function scale_lmodes(S::SphericalHarmonics{T}, g::Function)::Array{T,2} where {T}
+function scale_lmodes(S::SphericalHarmonics{T})::Array{T,2} where {T}
     lmax = S.lmax
     A = zeros(T, (lmax)^2 + 2*(lmax)+1, (lmax)^2 + 2*(lmax)+1)
     @inbounds for index in CartesianIndices(A)
@@ -129,7 +115,7 @@ function scale_lmodes(S::SphericalHarmonics{T}, g::Function)::Array{T,2} where {
         l,m = split(P)
         p,q = split(Q)
         if (l, m) == (p,q)
-           A[index] = g(l,m) 
+            A[index] = -l*(l+1) 
         end
     end
     return A
@@ -166,3 +152,14 @@ function scale_vector(S::SphericalHarmonics{T}, g::Function)::Array{Complex{T}, 
     return A 
 end
 
+function Base. div(S::SphericalHarmonics{T}) where {T} 
+    return modal_to_nodal_scalar_op(S)*scale_lmodes(S)*nodal_to_modal_grad_op(S)
+end
+
+function grad(S::SphericalHarmonics{T}) where {T}
+    return modal_to_nodal_grad_op(S)*nodal_to_modal_scalar_op(S) 
+end
+
+function scalar_op(S::SphericalHarmonics{T}) where {T}
+    return (modal_to_nodal_scalar_op(S), nodal_to_modal_scalar_op(S))
+end
