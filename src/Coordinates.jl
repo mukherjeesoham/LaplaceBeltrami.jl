@@ -9,7 +9,7 @@ export sqrt_deth_by_detq_q_hinv, sqrt_detq_by_deth
 export deth, detq, analyticF, q_hinv, q, hinv
 
 function Z(μ::T, ν::T)::T where {T}
-    z = sqrt(4π/3)*ScalarSH(1,0,μ,ν) + (1/10)*(sqrt(4π/7)*ScalarSH(3,0,μ,ν) - sqrt(4π/11)*ScalarSH(5,0,μ,ν)) 
+    z = sqrt(4π/3)*Ylm(1,0,μ,ν) + (1/10)*(sqrt(4π/7)*Ylm(3,0,μ,ν) - sqrt(4π/11)*Ylm(5,0,μ,ν)) 
     return z
 end
 
@@ -21,7 +21,7 @@ function theta(μ::T, ν::T)::T where {T}
 end
 
 function analyticF(l::Int, m::Int, μ::T, ν::T)::Complex{T} where {T} 
-    return ScalarSH(l, m, theta(μ, ν), ν)
+    return Ylm(l, m, theta(μ, ν), ν)
 end
 
 function qinv(a::Int, b::Int, μ::T, ν::T)::T where {T}
@@ -93,24 +93,6 @@ function sqrt_detq_by_deth(μ::T, ν::T)::T where {T}
 end
 
 function sqrt_deth_by_detq_q_hinv(a::Int, b::Int, μ::T, ν::T)::T where {T}
+    # TODO: We might not need the q metric? Since the gradient comes with it's index raised?
     return (1/sqrt_detq_by_deth(μ, ν))*q_hinv(a,b,μ,ν) 
-end
-
-function hinv(a::Int, b::Int, μ::T, ν::T)::T where {T}
-    # TODO: Test hinv for accuracy.
-    d1d1 = ((5120*(649 + 45*cos(2μ) - 117*cos(4μ) + 63*cos(6μ)))/(3329198 + 157554*cos(2μ) - 46728*cos(4μ) - 161523*cos(6μ) - 5670*cos(8μ) + 3969*cos(10μ))) 
-    d1d2 = 0 
-    d2d1 = 0 
-    d2d2 = 1
-
-    g11  = g(1,1,μ,ν)
-    g22  = g(2,2,μ,ν)
-    g12  = g21 = g(1,2,μ,ν)
-    
-    h11  = d1d1*d1d1*g11 + d1d1*d2d1*g12 + d2d1*d1d1*g21 + d2d1*d2d1*g22 
-    h22  = d1d2*d1d2*g11 + d1d2*d2d2*g12 + d2d2*d1d2*g21 + d2d2*d2d2*g22 
-    h12  = d1d1*d1d2*g11 + d1d1*d2d2*g12 + d2d1*d1d2*g21 + d2d1*d2d2*g22 
-    hinv = inv([h11 h12; h12 h22])
-
-    return hinv[a,b]
 end

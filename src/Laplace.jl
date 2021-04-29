@@ -23,8 +23,36 @@ function laplace(C⁰::Array{T,2})::Array{T,2} where {T <: Complex}
     return (div ∘ grad)(C⁰) 
 end
 
+function grad(C⁰::Array{T,2}, lmax::Int)::Array{T,2} where {T<:Complex}
+    ðC¹ = spinsph_eth(C⁰, 0)
+    # TODO: In the future, pass the metric to spinspn_evaluate to make
+    # calculations point-wise.
+    ðF¹ = spinsph_evaluate(ðC¹, 1) 
+    h¹¹ = map((μ, ν)->sqrt_deth_by_detq_q_hinv(1,1,μ,ν), lmax)
+    h¹² = h²¹ =  map((μ, ν)->sqrt_deth_by_detq_q_hinv(1,2,μ,ν), lmax)
+    h²² = map((μ, ν)->sqrt_deth_by_detq_q_hinv(2,2,μ,ν), lmax)
+    return Complex.(h¹¹ .* real.(ðF¹) + h¹² .* imag.(ðF¹), 
+                    h²¹ .* real.(ðF¹) + h²² .* imag.(ðF¹))
+end
+
+function div(ðF¹::Array{T,2}, lmax::Int)::Array{T,2} where {T<:Complex}
+    # TODO: In the future, pass the metric to spinspn_evaluate to make
+    # calculations point-wise.
+    ðC¹  = spinsph_transform(ðF¹, 1) 
+    ð̄ðC⁰ = spinsph_ethbar(ðC¹, 1)
+    F⁰   = spinsph_evaluate(ð̄ðC⁰, 0)  
+    hg   = map((μ, ν)->sqrt_detq_by_deth(μ, ν), lmax)
+    return spinsph_transform(hg .* F⁰, 0) 
+end
+
+function laplace(C⁰::Array{T,2}, lmax::Int)::Array{T,2} where {T <: Complex}
+    return div(grad(C⁰, lmax)) 
+end
+
 function laplace(x::AbstractArray{Float64,1}, lmax::Int)::AbstractArray{Float64,1}
-    return C2Vec(laplace(Vec2C(x, lmax)))
+    # TODO: Laplace with coordinates
+    # FIXME: We are not getting the correct eigenvalues. Agrrhh! 
+    return C2Vec(laplace(Vec2C(x, lmax), lmax))
 end
 
 function C2Vec(C⁰::AbstractArray{Complex{T},2})::AbstractArray{T,1} where {T}

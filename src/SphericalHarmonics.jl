@@ -1,5 +1,5 @@
 #---------------------------------------------------------------
-# LaplaceOnASphere
+# LaplaceBeltrami
 # Soham 3/20
 # Compute scalar and tensor spherical harmonics
 # Ψ = ∇Y

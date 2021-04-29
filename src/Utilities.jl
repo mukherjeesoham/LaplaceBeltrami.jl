@@ -38,7 +38,7 @@ function gramschmidt(u1::Array{T,2}, u2::Array{T,2}, u3::Array{T,2}, lmax::Int) 
     u3 = u3 ./ sqrt(dot(u3, u3, lmax))
 
     # Check if the process worked
-    if true
+    if false
         @show dot(u1, u1, lmax)
         @show dot(u1, u2, lmax)
         @show dot(u1, u3, lmax)
@@ -65,7 +65,7 @@ function plot(u1::Array{T,2}, u2::Array{T,2}, u3::Array{T,2}, lmax::Int, string:
         Colorbar(fig[1, 2][1, 2], co2, width = 20)
         _, co3 = contourf(fig[1, 3][1, 1], latglq, longlq, u3, levels = 10)
         Colorbar(fig[1, 3][1, 2], co3, width = 20)
-        save("l1-eigenvalues-$string.pdf", fig)
+        save("output/$string.pdf", fig)
     end
 end
 
@@ -79,7 +79,7 @@ function plot(u1::Array{T,2}, u2::Array{T,2}, lmax::Int, string::String) where {
         Colorbar(fig[1, 1][1, 2], co1, width = 20)
         _, co2 = contourf(fig[1, 2][1, 1], latglq, longlq, u2, levels = 10)
         Colorbar(fig[1, 2][1, 2], co2, width = 20)
-        save("$string.pdf", fig)
+        save("output/$string.pdf", fig)
     end
 end
 
@@ -91,6 +91,6 @@ function plot(u1::Array{T,2}, lmax::Int, string::String) where {T}
         fig = Figure(resolution = (400, 400))
         _, co1 = contourf(fig[1, 1][1, 1], latglq, longlq, u1, levels = 10)
         Colorbar(fig[1, 1][1, 2], co1, width = 20)
-        save("$string.pdf", fig)
+        save("output/$string.pdf", fig)
     end
 end

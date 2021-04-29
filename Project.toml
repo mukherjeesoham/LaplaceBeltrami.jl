@@ -1,4 +1,4 @@
-name = "LaplaceOnASphere"
+name = "LaplaceBeltrami"
 uuid = "cf57e717-8b0e-49b7-8127-406d074aa7e6"
 authors = ["Soham Mukherjee <smukherjee@perimeterinstitute.ca>"]
 version = "0.1.0"
