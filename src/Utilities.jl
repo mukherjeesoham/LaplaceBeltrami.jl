@@ -59,11 +59,11 @@ function plot(u1::Array{T,2}, u2::Array{T,2}, u3::Array{T,2}, lmax::Int, string:
     println("Starting plotting figure")
     @time begin
         fig = Figure(resolution = (1600, 400))
-        _, co1 = contourf(fig[1, 1][1, 1], latglq, longlq, u1, levels = 10)
+        _, co1 = contourf(fig[1, 1][1, 1], longlq, latglq, u1', levels = 10)
         Colorbar(fig[1, 1][1, 2], co1, width = 20)
-        _, co2 = contourf(fig[1, 2][1, 1], latglq, longlq, u2, levels = 10)
+        _, co2 = contourf(fig[1, 2][1, 1], longlq, latglq, u2', levels = 10)
         Colorbar(fig[1, 2][1, 2], co2, width = 20)
-        _, co3 = contourf(fig[1, 3][1, 1], latglq, longlq, u3, levels = 10)
+        _, co3 = contourf(fig[1, 3][1, 1], longlq, latglq, u3', levels = 10)
         Colorbar(fig[1, 3][1, 2], co3, width = 20)
         save("output/$string.pdf", fig)
     end
@@ -72,12 +72,11 @@ end
 function plot(u1::Array{T,2}, u2::Array{T,2}, lmax::Int, string::String) where {T}
     N = lmax + 1
     latglq, longlq = sph_points(N) 
-    println("Starting plotting figure")
     @time begin
         fig = Figure(resolution = (1000, 400))
-        _, co1 = contourf(fig[1, 1][1, 1], latglq, longlq, u1, levels = 10)
+        _, co1 = contourf(fig[1, 1][1, 1], longlq, latglq, u1', levels = 10)
         Colorbar(fig[1, 1][1, 2], co1, width = 20)
-        _, co2 = contourf(fig[1, 2][1, 1], latglq, longlq, u2, levels = 10)
+        _, co2 = contourf(fig[1, 2][1, 1], longlq, latglq, u2', levels = 10)
         Colorbar(fig[1, 2][1, 2], co2, width = 20)
         save("output/$string.pdf", fig)
     end
@@ -86,7 +85,6 @@ end
 function plot(u1::Array{T,2}, lmax::Int, string::String) where {T}
     N = lmax + 1
     latglq, longlq = sph_points(N) 
-    println("Starting plotting figure")
     @time begin
         fig = Figure(resolution = (400, 400))
         _, co1 = contourf(fig[1, 1][1, 1], latglq, longlq, u1, levels = 10)
