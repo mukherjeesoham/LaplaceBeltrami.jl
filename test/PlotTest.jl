@@ -1,5 +1,4 @@
 using FastTransforms, GLMakie, Random, FileIO
-GLMakie.activate!()
 
 Random.seed!(0)
 
@@ -10,9 +9,13 @@ x = Float32[cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
 y = Float32[sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
 z = Float32[cospi(θ) for θ in θ, φ in φ]
 
-u = Float32[cospi(θ) for θ in θ, φ in φ]
+# Function on the sphere
+u = Float32[cospi(sinpi(θ)) for θ in θ, φ in φ]
+
+camera = 
 scene = Scene(resolution = (1200, 1200));
 surf  = surface!(scene, x, y, z, color = u, colormap = :viridis, colorrange = (-1.0, 1.0));
-# FIXME: How to save the plot?
-# TODO: Print the frames in different camera angles to identify the plot.
-display(surf)
+rotate_cam!(scene, (0, 0, π/2))
+# TODO: Figure out how to save the plot.
+# S*&ew this. Do a polar plot instead. 
+save("output/sphere.png", surf)

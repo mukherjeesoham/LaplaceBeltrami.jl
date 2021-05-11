@@ -92,3 +92,8 @@ function plot(u1::Array{T,2}, lmax::Int, string::String) where {T}
         save("output/$string.pdf", fig)
     end
 end
+
+function isdiagonal(x::Matrix{T}) where {T}
+    return istril(x) && istriu(x)
+end
+
