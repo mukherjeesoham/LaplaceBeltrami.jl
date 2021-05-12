@@ -43,11 +43,6 @@ function q′inv(a::Int, b::Int, θ::T, ϕ::T) where {T <: Real}
     return g′inv[a, b]
 end
 
-function chop(x::T) where {T}
-    x < 1e-12 ? (return 0.0) : (return x)
-end
-
-
 function computemetric(lmax::Int)
     h11 = map((μ,ν)->qinv(1,1,μ,ν), lmax)
     h12 = map((μ,ν)->qinv(1,2,μ,ν), lmax)
@@ -65,8 +60,11 @@ end
 lmax = 13
 Random.seed!(lmax)
 A = rand(3,3)
-ginv = computemetric(lmax)
-x′, y′, z′ = x′y′z′_of_rθϕ(lmax) 
-jac = jacobian(x′, y′, z′, lmax)
-h11, h12, h22 = transform(ginv, jac)
-@show maximum(abs.(h12))
+qinverse = map(inv ∘ q, lmax)
+xyz = x′y′z′_of_rθϕ(lmax) 
+# TODO: Test the Jacobian with explicit analytic expressions.
+jac = jacobian(xyz..., lmax)
+@show typeof(qinverse)
+@show typeof(jac)
+# TODO: Test this operationn as well/and the transform function
+hinverse = jac .* qinverse .* transpose.(jac) 

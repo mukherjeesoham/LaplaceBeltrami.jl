@@ -5,10 +5,9 @@
 
 module LaplaceBeltrami
 
-include("Laplace.jl")
-include("Utilities.jl")
-include("Coordinates.jl")
-include("Gradient.jl")
 include("SphericalHarmonics.jl")
+include("DistortedCoordinates.jl")
+include("Utilities.jl")
+include("LinearOperators.jl")
 
 end
