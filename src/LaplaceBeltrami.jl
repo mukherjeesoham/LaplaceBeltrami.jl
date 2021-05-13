@@ -7,7 +7,7 @@ module LaplaceBeltrami
 
 include("SphericalHarmonics.jl")
 include("DistortedCoordinates.jl")
-include("Utilities.jl")
 include("LinearOperators.jl")
+include("Utilities.jl")
 
 end

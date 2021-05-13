@@ -7,7 +7,7 @@
 using FastSphericalHarmonics, LinearAlgebra, ForwardDiff
 export gramschmidt, evaluate, jacobian, transform
 export cartesian2spherical, spherical2cartesian
-export raise, lower
+export raise, lower, isdiagonal
 
 function Base. map(u::Function, lmax::Int)
    N = lmax + 1
@@ -41,10 +41,6 @@ function gramschmidt(u1::Array{T,2}, u2::Array{T,2}, u3::Array{T,2}, lmax::Int) 
     return (u1, u2, u3)
 end
 
-function isdiagonal(x::Matrix{T}) where {T}
-    return istril(x) && istriu(x)
-end
-
 function wrap(x)
     (x < 0) ? (return (2π + x)) : (return x)
 end
@@ -67,30 +63,27 @@ function cartesian2spherical(x::Vector{T}) where {T<:Real}
     return [cartesian2spherical(x...)...]  
 end
 
-function jacobian_cartesian2spherical(μ::T, ν::T) where {T<:Real}
-    return ForwardDiff.jacobian(cartesian2spherical, [0.0,μ,ν])
+function jacobian_cartesian2spherical(x::T, y::T, z::T) where {T<:Real}
+    return ForwardDiff.jacobian(cartesian2spherical, [x,y,z])[2:end, :]
 end
 
 function jacobian(x::Matrix{T}, y::Matrix{T}, z::Matrix{T}, lmax::Int) where {T<:Real}
-    dx = grad(spinsph_transform(x, 0), lmax) 
-    dy = grad(spinsph_transform(y, 0), lmax) 
-    dz = grad(spinsph_transform(z, 0), lmax) 
-    J1 = map(jacobian_cartesian2spherical, lmax)
+    dx = gradbar(spinsph_transform(x, 0), lmax) 
+    dy = gradbar(spinsph_transform(y, 0), lmax) 
+    dz = gradbar(spinsph_transform(z, 0), lmax) 
+    J  = Matrix{SMatrix{2,2,Float64,4}}(undef, size(dx)...) 
 
-    J = Matrix{SMatrix{2,2,Float64,4}}(undef, size(dx)...) 
     for index in CartesianIndices(dx)
-        J0 = SMatrix{3,3}([0.0 dx[index][1] dx[index][2]; 
-                           0.0 dy[index][1] dy[index][2]; 
-                           0.0 dz[index][1] dz[index][2]])
-        J2 = J1[index] * J0  
-        @show typeof(J2)
-        J[index] = J2[2:end, 2:end]
+        Jdθdx = jacobian_cartesian2spherical(x[index], y[index], z[index])
+        Jdxdθ = [dx[index][1] dx[index][2]; dy[index][1] dy[index][2]; dz[index][1] dz[index][2]]
+        J[index] = Jdθdx * Jdxdθ
     end
+
     return J
 end
 
-function transform(h::Matrix{SMatrix{2,2,T}}, J::Matrix{SMatrix{2,2,T}}) where {T<:Real}
-    return J .* h .* J′ 
+function transform(h::Matrix{T}, J::Matrix{T}) where {T<:SMatrix{2,2}}
+    return J .* h .* transpose.(J) 
 end
 
 function raise(qinv::Matrix{T}, x::Vector{T}) where {T<:Real}
@@ -100,3 +93,14 @@ end
 function lower(q::Matrix{T}, x::Vector{T}) where {T<:Real}
     return q * x
 end
+
+function isdiagonal(x::AbstractMatrix{T}, tol::Float64) where {T<:Real}
+    for index in CartesianIndices(x)
+        i, j = index.I
+        if i != j
+            @assert x[index] <= tol
+        end
+    end
+    return true
+end
+

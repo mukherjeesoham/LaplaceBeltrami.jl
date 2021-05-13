@@ -4,7 +4,7 @@
 #-----------------------------------------------------
 
 using FastSphericalHarmonics, StaticArrays
-export grad, laplace, Laplace
+export grad, laplace, Laplace, gradbar
 
 function sqrtq(μ::T, ν::T) where {T<:Real}
     return sqrt.(q(μ, ν))
@@ -19,6 +19,13 @@ function grad(C⁰::AbstractMatrix{T}, lmax::Int) where {T <: Real}
     # output to the divergence operator seems to mess with things. 
     # REMOVED return M .* F¹ 
     return F¹
+end
+
+function gradbar(C⁰::AbstractMatrix{T}, lmax::Int) where {T <: Real}
+    ðC⁰ = spinsph_eth(C⁰, 0)
+    F¹  = spinsph_evaluate(ðC⁰, 1)
+    M   = map(sqrtq, lmax)
+    return -M .* F¹ 
 end
 
 function div(F¹::AbstractMatrix{SVector{2, T}}) where {T<:Real}

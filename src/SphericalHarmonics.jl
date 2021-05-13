@@ -22,9 +22,6 @@ function unit(ind::CartesianIndex{D}, size::NTuple{D,Int}) where {D}
     return unit(true, ind, size)
 end
 
-chop(x) = abs2(x) < 100eps(x) ? zero(x) : x
-chop(x::Complex) = Complex(chop(real(x)), chop(imag(x)))
-
 # [Generalized binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient#Generalization_and_connection_to_the_binomial_series)
 function Base.binomial(α::Number, k::Integer)
     k == 0 && return one(α)

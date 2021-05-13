@@ -6,6 +6,7 @@
 
 using FastSphericalHarmonics, LinearAlgebra, Test
 using ForwardDiff, CairoMakie, Random
+using StaticArrays
 
 function rotate(x::T, y::T, z::T) where {T <: Real} 
     K  = eigen(A + A').vectors
@@ -62,9 +63,6 @@ Random.seed!(lmax)
 A = rand(3,3)
 qinverse = map(inv ∘ q, lmax)
 xyz = x′y′z′_of_rθϕ(lmax) 
-# TODO: Test the Jacobian with explicit analytic expressions.
 jac = jacobian(xyz..., lmax)
-@show typeof(qinverse)
-@show typeof(jac)
-# TODO: Test this operationn as well/and the transform function
-hinverse = jac .* qinverse .* transpose.(jac) 
+hinverse = transform(qinverse, jac)  
+@test all(isdiagonal.(hinverse, 1e-12))
