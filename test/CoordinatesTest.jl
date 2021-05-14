@@ -16,16 +16,6 @@ function rotate(x::T, y::T, z::T) where {T <: Real}
     return (x, y, z)
 end
 
-function qinv(a::Int, b::Int, μ::T, ν::T) where {T <: Real} 
-    if a == b == 1
-        return 1.0
-    elseif a == b == 2
-        return csc(μ)^2
-    else
-        return 0.0
-    end
-end
-
 function r′θ′ϕ′_of_rθϕ(coords::Array{T,1}) where {T<:Real}
     r,  θ,  ϕ  = coords 
     r′, θ′, ϕ′ = cartesian2spherical(rotate(spherical2cartesian(r, θ, ϕ)...)...)
@@ -36,19 +26,6 @@ function xyz_of_rθϕ(coords::Array{T,1}) where {T<:Real}
     r,  θ,  ϕ  = coords 
     x, y, z = spherical2cartesian(r, θ, ϕ)
     return [x, y, z]
-end
-
-function q′inv(a::Int, b::Int, θ::T, ϕ::T) where {T <: Real}
-    hinv  = [qinv(a, b, θ, ϕ) for a in 1:2, b in 1:2]  
-    g′inv =  (J * hinv * J')
-    return g′inv[a, b]
-end
-
-function computemetric(lmax::Int)
-    h11 = map((μ,ν)->qinv(1,1,μ,ν), lmax)
-    h12 = map((μ,ν)->qinv(1,2,μ,ν), lmax)
-    h22 = map((μ,ν)->qinv(2,2,μ,ν), lmax)
-    return (h11, h12, h22)
 end
 
 function x′y′z′_of_rθϕ(lmax::Int) 

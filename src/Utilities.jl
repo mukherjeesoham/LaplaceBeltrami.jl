@@ -74,9 +74,9 @@ function jacobian(x::Matrix{T}, y::Matrix{T}, z::Matrix{T}, lmax::Int) where {T<
     J  = Matrix{SMatrix{2,2,Float64,4}}(undef, size(dx)...) 
 
     for index in CartesianIndices(dx)
-        Jdθdx = jacobian_cartesian2spherical(x[index], y[index], z[index])
-        Jdxdθ = [dx[index][1] dx[index][2]; dy[index][1] dy[index][2]; dz[index][1] dz[index][2]]
-        J[index] = Jdθdx * Jdxdθ
+        Jdθ′dx′ = jacobian_cartesian2spherical(x[index], y[index], z[index])
+        Jdx′dθ  = [dx[index][1] dx[index][2]; dy[index][1] dy[index][2]; dz[index][1] dz[index][2]]
+        J[index] = Jdθ′dx′ * Jdx′dθ
     end
 
     return J

@@ -26,5 +26,8 @@ u1, u2, u3 = evaluate(ef, lmax)
 x, y, z    = gramschmidt(u1, u2, u3, lmax) 
 jac        = jacobian(x, y, z, lmax)
 
-qmetric    = map(q, lmax)   
+qinverse = map(inv ∘ q, lmax)   
+hinverse = transform(qinverse, jac)
+@test all(isdiagonal.(hinverse, 1e-10))
+display(hinverse[1,1])
 
