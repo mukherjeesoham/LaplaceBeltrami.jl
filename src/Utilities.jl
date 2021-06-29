@@ -5,7 +5,7 @@
 #---------------------------------------------------------------
 
 using FastSphericalHarmonics, LinearAlgebra, ForwardDiff
-export gramschmidt, evaluate, jacobian, transform
+export quad, gramschmidt, evaluate, jacobian, transform
 export cartesian2spherical, spherical2cartesian
 export raise, lower, isdiagonal
 
@@ -15,13 +15,13 @@ function Base. map(u::Function, lmax::Int)
    return [u(θ, ϕ) for θ in θ, ϕ in ϕ]
 end
 
-function quad(F⁰::Array{T,2}, lmax::Int) where {T}
+function quad(F⁰::Array{T,2}) where {T}
     C⁰ = spinsph_transform(F⁰,0) 
     return 4π*C⁰[sph_mode(0,0)]
 end
 
-function LinearAlgebra.dot(u::Array{T,2}, v::Array{T,2}, lmax::Int) where {T} 
-    return quad(u.*v, lmax)
+function LinearAlgebra.dot(u::Array{T,2}, v::Array{T,2}) where {T} 
+    return quad(u.*v)
 end
 
 function evaluate(u::Array{T,2}, lmax::Int) where {T}
@@ -31,13 +31,13 @@ function evaluate(u::Array{T,2}, lmax::Int) where {T}
     return (u1, u2, u3)
 end
 
-function gramschmidt(u1::Array{T,2}, u2::Array{T,2}, u3::Array{T,2}, lmax::Int) where {T}
+function gramschmidt(u1::Array{T,2}, u2::Array{T,2}, u3::Array{T,2}) where {T}
     # Orthonormalize
-    u1 = u1 ./ sqrt(dot(u1, u1, lmax))
-    u2 = u2 - dot(u1, u2, lmax) .* u1
-    u2 = u2 ./ sqrt(dot(u2, u2, lmax))
-    u3 = u3 - dot(u1, u3, lmax) .* u1 - dot(u2, u3, lmax) .* u2
-    u3 = u3 ./ sqrt(dot(u3, u3, lmax))
+    u1 = u1 ./ sqrt(dot(u1, u1))
+    u2 = u2 - dot(u1, u2) .* u1
+    u2 = u2 ./ sqrt(dot(u2, u2))
+    u3 = u3 - dot(u1, u3) .* u1 - dot(u2, u3) .* u2
+    u3 = u3 ./ sqrt(dot(u3, u3))
     return (u1, u2, u3)
 end
 
@@ -86,11 +86,11 @@ function transform(h::Matrix{T}, J::Matrix{T}) where {T<:SMatrix{2,2}}
     return J .* h .* transpose.(J) 
 end
 
-function raise(qinv::Matrix{T}, x::Vector{T}) where {T<:Real}
+function raise(qinv::AbstractMatrix{T}, x::AbstractVector{T}) where {T<:Real}
     return qinv * x
 end
 
-function lower(q::Matrix{T}, x::Vector{T}) where {T<:Real}
+function lower(q::AbstractMatrix{T}, x::AbstractVector{T}) where {T<:Real}
     return q * x
 end
 
@@ -98,7 +98,9 @@ function isdiagonal(x::AbstractMatrix{T}, tol::Float64) where {T<:Real}
     for index in CartesianIndices(x)
         i, j = index.I
         if i != j
-            @assert x[index] <= tol
+            if x[index] >= tol
+                return false
+            end
         end
     end
     return true

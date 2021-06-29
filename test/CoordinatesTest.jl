@@ -35,7 +35,7 @@ function x′y′z′_of_rθϕ(lmax::Int)
     return (x, y, z)
 end
 
-lmax = 13
+lmax = 3
 Random.seed!(lmax)
 A = rand(3,3)
 qinverse = map(inv ∘ q, lmax)
@@ -43,3 +43,22 @@ xyz = x′y′z′_of_rθϕ(lmax)
 jac = jacobian(xyz..., lmax)
 hinverse = transform(qinverse, jac)  
 @test all(isdiagonal.(hinverse, 1e-12))
+
+@test Z(π/6, π/5) ≈ 0.9208285738676726
+@test det(h(π/4, π/19)) ≈ 0.6583073877333249
+
+F¹ = map((μ,ν)->SVector{2}([cos(μ), sin(ν)]), lmax)
+X  = map((μ,ν)->SVector{2}([μ, ν]), lmax)
+qmetric = map(q, lmax)   
+hmetric = map(h, lmax)   
+# display(X[2,2])
+# display(hmetric[2,2])
+# display(map(S1, qmetric, hmetric, F¹)[2,2])
+println("vector")
+display(F¹[2,2])
+println("lower")
+display(map(lower, hmetric, F¹)[2,2])
+println("raise")
+display(map(raise, inv.(hmetric), F¹)[2,2])
+println("S1")
+display(map(S1, qmetric, hmetric, F¹)[2,2])
