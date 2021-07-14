@@ -36,8 +36,6 @@ if false
     dSdΓ = div(SdΓ, lmax)
 end 
 
-# Test the divergence in isolation. First, check whether the integral of the divergence
-# over the sphere is zero. This is guaranteed by the Divergence theorem. Next one can also put
-# a purely divergence-free vector field on the sphere, and check if the divergence is indeed zero.
-# These can be tested with the complicated metric in there. 
-# TODO: Also check vector field decompositions on the sphere. 
+# The curl computation is weird on the 2D sphere. The curl is a scalar. Check this. 
+# Then, compute the metric for a distorted sphere and check if you can recover
+# the eigenvalues.

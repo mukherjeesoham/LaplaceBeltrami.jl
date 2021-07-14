@@ -6,34 +6,40 @@
 # See associated Mathematica notebooks MetricTransformation.nb
 # and AnalyticFunctions.nb
 #---------------------------------------------------------------
-# TODO: Plot the functions to check why 1.1 cos(μ) doesn't work.
 
 using ForwardDiff, StaticArrays 
 export theta, q, h, Z
 
 function Z(μ::T, ν::T)::T where {T<:Real}
     z = (1 / 80) * (53 * cos(μ) + 90 * cos(μ)^3 - 63 * cos(μ)^5) 
-    # z = 1.1 * cos(μ) + 0.1
     return z
 end
 
 function theta(μ::T, ν::T)::T where {T<:Real}
-    x = sin(μ)*cos(ν) 
-    y = sin(μ)*sin(ν) 
-    z = Z(μ,ν)
-    # Renormalize the coordinates
-    r = sqrt.(x^2 + y^2 + z^2)
-    x, y, z = (x, y, z) ./ r
+    # Stretch the coordinates to make them ellipsoids
+    (a, b, c) = (1,2,3)
+    x = a*sin(μ)*cos(ν) 
+    y = b*sin(μ)*sin(ν) 
+    z = c*cos(μ) 
+    # Now project it back onto a sphere
+    r = x^2 + y^2 + z^2
+    x = x/r
+    y = y/r
+    z = z/r
     return acos(z/sqrt(x^2 + y^2 + z^2))
 end
 
 function phi(μ::T, ν::T)::T where {T<:Real}
-    x = sin(μ)*cos(ν) 
-    y = sin(μ)*sin(ν) 
-    z = Z(μ,ν)
-    # Renormalize the coordinates
-    r = sqrt.(x^2 + y^2 + z^2)
-    x, y, z = (x, y, z) ./ r
+    # Stretch the coordinates to make them ellipsoids
+    (a, b, c) = (1,2,3)
+    x = a*sin(μ)*cos(ν) 
+    y = b*sin(μ)*sin(ν) 
+    z = c*cos(μ) 
+    # Now project it back onto a sphere
+    r = x^2 + y^2 + z^2
+    x = x/r
+    y = y/r
+    z = z/r
     return atan(y, x)
 end
 

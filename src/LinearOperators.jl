@@ -57,19 +57,12 @@ function Base. div(F¹::AbstractMatrix{SVector{2, T}}, lmax::Int) where {T<:Real
 end
 
 function curl(F¹::AbstractMatrix{SVector{2, T}}, q::AbstractMatrix, lmax::Int) where {T}
-    # FIXME: Curl of a the gradient should be zero. Is this a good way to
-    # compute the derivatives? These are vector components with a basis. 
-    # Wait--how does this work?
-    curlF = similar(F¹) 
-    dFθ   = map(x->[0.0,x...], grad(map(x->x[1], F¹), lmax))
-    dFϕ   = map(x->[0.0,x...], grad(map(x->x[2], F¹), lmax))
-    dFr   = 0 .* dFθ # Introduce a dummy direction
-    dF    = [dFr, dFθ, dFϕ]
-    for index in CartesianIndices(F¹)
-        curlF[index] = [sum(levicivita([a,b,c]) * dF[b][index][c]  for b in 1:3, c in 1:3) for a in 1:3][2:3]
-    end
-    curlF = (1 ./ sqrt.(det.(q))) .* curlF
-    return map(raise, inv.(q), curlF) 
+    Fθ    = map(x->x[1], F¹)
+    Fϕ    = map(x->x[2], F¹) 
+    dϕFθ  = map(x->x[2], grad(Fθ, lmax))
+    dθFϕ  = map(x->x[1], grad(Fϕ, lmax))
+    # FIXME: Is this supposed to be zero?
+    return (dϕFθ .* Fϕ - dθFϕ .* Fθ)
 end
 
 function S1(q::AbstractMatrix{T}, h::AbstractMatrix{T}, F¹::AbstractVector{T}) where {T<:Real}
@@ -86,25 +79,15 @@ end
 
 function laplace(C⁰::AbstractMatrix{T}, A::Laplace) where {T<:Real}
     ∇F⁰      = grad(C⁰, A.lmax)             # Tested 
-
     # TODO: Check if the curl of the gradient is zero. The scaling with the determinant 
     # of h is not necessary here, unless it does good things at the pole. 
-    curl∇F⁰    = curl(∇F⁰, A.q, A.lmax) 
-    @assert maximum(norm.(curl∇F⁰)) < 1e-12
-
+    # curl∇F⁰    = curl(∇F⁰, A.q, A.lmax) 
+    # @show maximum(norm.(curl∇F⁰))
+    # @assert maximum(norm.(curl∇F⁰)) < 1e-12
     S1∇F⁰    = map(S1, A.q, A.h, ∇F⁰)       # Tested 
 
-    # TODO: Modify the gradient such that it's not a gradient anymore. Then compute the curl, 
-    # followed by the divergence to check if the identities are satisfied.
-    curlS1∇F⁰ = curl(S1∇F⁰, A.q, A.lmax)
-    divcurlS1∇F⁰  = div(curlS1∇F⁰, A.lmax)  
-    @assert maximum(abs.(divcurlS1∇F⁰)) < 1e-12            # TEST: Divergence of a curl should be zero. 
-    @assert quad(divcurlS1∇F⁰) < 1e-12            # TEST: Integrate the divergence on the sphere.
-    
     ∇S1∇F⁰   = div(S1∇F⁰, A.lmax)           # FIXME: Compare with AD 
-
     @assert quad(∇S1∇F⁰) < 1e-12            # TEST: Integrate the divergence on the sphere.
-
     S2∇S1∇F⁰ = map(S2, A.q, A.h, ∇S1∇F⁰)    # Tested 
     return spinsph_transform(S2∇S1∇F⁰, 0) 
 end
