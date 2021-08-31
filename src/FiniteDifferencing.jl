@@ -7,22 +7,27 @@
 
 using FastSphericalHarmonics
 using SparseArrays, LinearAlgebra 
-export map, Dθ, Dϕ, Dθ̄, Dϕ̄
-export collocation, dscalar
+export npoints, map, Dθ, Dϕ, Dθ̄, Dϕ̄
+export collocation, dscalar, dvector
+
+function npoints(lmax::Int)::NTuple{2, Int}
+    N = lmax + 1
+    M = 2N - 1 
+    return (N, 2M)
+end
 
 function collocation(i::Int, j::Int, ni::Int, nj::Int)
-    lmax = FastSphericalHarmonics.sph_lmax(ni) 
-    θ    = map((μ,ν)->μ, lmax)
-    ϕ    = map((μ,ν)->ν, lmax)
-    return (θ[i,j], ϕ[i,j])
+    # TODO: Add ability to compute for arbitrary i and j to test
+    # the wrap function
+    N = ni 
+    M = nj
+    θ, ϕ = (π / N * (0.5:(N - 0.5)), 2π / M * (0:(M - 1)))
+    return θ[i], ϕ[j]
 end
 
 function Base.map(u::Function, ni::Int, nj::Int)
-    scalar = zeros(Complex{Float64}, ni, nj)
-    for index in CartesianIndices(scalar)
-        scalar[index] = u(collocation(index.I..., ni, nj)...) 
-    end
-    return scalar
+    scalar = zeros(ni, nj)
+    return [u(collocation(index.I..., ni, nj)...) for index in CartesianIndices(scalar)]
 end
 
 function Base.join(i::Int, j::Int, ni::Int, nj::Int)::Int
@@ -55,6 +60,8 @@ function parity(i::Int, ni::Int)
     end
 end
 
+# FIXME: We get 2nd order convergence for the scalar
+# derivative operators for a 4th order method.
 function stencil(order::Int, index::Int)
     if order == 2
         return (-1/2, 0, 1/2)[index+2]
@@ -83,7 +90,6 @@ end
 
 function Dϕ(ni::Int, nj::Int, order::Int)
     I, J, V = (Int[], Int[], Float64[])
-    @show ni, nj
     for i in 1:ni, j in  1:nj
         for Δj in -order÷2:order÷2
             push!(I, join(i, j, ni, nj)) 

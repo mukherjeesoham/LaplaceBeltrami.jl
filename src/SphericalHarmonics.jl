@@ -5,8 +5,7 @@ using LinearAlgebra
 using SpecialFunctions
 using StaticArrays
 
-# TODO: Ask Erik to export this method.
-export sYlm, chop
+export sYlm, chops, ∂θsYlm, ∂ϕsYlm 
 
 bitsign(b::Bool) = b ? -1 : 1
 bitsign(n::Integer) = bitsign(isodd(n))
