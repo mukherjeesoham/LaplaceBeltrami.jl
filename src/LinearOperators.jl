@@ -1,9 +1,9 @@
 #-----------------------------------------------------
-# Implement the Linear Operators
+# Implement the Linear Operators using spin-weighted spherical harmonics.
 # Soham 05/2021
 #-----------------------------------------------------
 
-using FastSphericalHarmonics, StaticArrays, Combinatorics
+using FastSphericalHarmonics, StaticArrays
 export grad, laplace, Laplace, S1, S2
 export gradbar, divbar
 using CairoMakie
@@ -50,19 +50,9 @@ function Base. div(F¹::AbstractMatrix{SVector{2, T}}, lmax::Int) where {T<:Real
     M   = map(matrix, lmax)
     F¹  = SVector{2}.(inv.(M) .* F¹)
     C¹  = spinsph_transform(F¹, -1)  
-    # filter!(C¹, lmax)  # Throw away the abs(m) > l modes
     ðC¹ = spinsph_eth(C¹, -1)
     ∇²F = spinsph_evaluate(ðC¹, 0) 
     return ∇²F
-end
-
-function curl(F¹::AbstractMatrix{SVector{2, T}}, q::AbstractMatrix, lmax::Int) where {T}
-    Fθ    = map(x->x[1], F¹)
-    Fϕ    = map(x->x[2], F¹) 
-    dϕFθ  = map(x->x[2], grad(Fθ, lmax))
-    dθFϕ  = map(x->x[1], grad(Fϕ, lmax))
-    # FIXME: Is this supposed to be zero?
-    return (dϕFθ .* Fϕ - dθFϕ .* Fθ)
 end
 
 function S1(q::AbstractMatrix{T}, h::AbstractMatrix{T}, F¹::AbstractVector{T}) where {T<:Real}
@@ -77,19 +67,14 @@ function S3(q::AbstractMatrix{T}, h::AbstractMatrix{T}, F¹::AbstractVector{T}) 
     return sqrt(det(q) / det(h)) .* F¹
 end
 
+# FIXME: Check if this Laplace operator gives the correct eigenvalues for the eigensolver. 
+# If not, look into this.
 function laplace(C⁰::AbstractMatrix{T}, A::Laplace) where {T<:Real}
-    ∇F⁰      = grad(C⁰, A.lmax)             # Tested 
-    # TODO: Check if the curl of the gradient is zero. The scaling with the determinant 
-    # of h is not necessary here, unless it does good things at the pole. 
-    # curl∇F⁰    = curl(∇F⁰, A.q, A.lmax) 
-    # @show maximum(norm.(curl∇F⁰))
-    # @assert maximum(norm.(curl∇F⁰)) < 1e-12
-    S1∇F⁰    = map(S1, A.q, A.h, ∇F⁰)       # Tested 
-
-    ∇S1∇F⁰   = div(S1∇F⁰, A.lmax)           # FIXME: Compare with AD 
-    @assert quad(∇S1∇F⁰) < 1e-12            # TEST: Integrate the divergence on the sphere.
-    S2∇S1∇F⁰ = map(S2, A.q, A.h, ∇S1∇F⁰)    # Tested 
-    return spinsph_transform(S2∇S1∇F⁰, 0) 
+    dU      = grad(C⁰, A.lmax) 
+    SdU     = map(S1, A.q, A.h, dU) 
+    dSdU    = div(SdU, A.lmax) 
+    ΔU      = map(S2, A.q, A.h, dSdU) 
+    return spinsph_transform(ΔU, 0) 
 end
 
 function laplace(x::AbstractArray{Float64,1}, A::Laplace)::AbstractArray{Float64,1}

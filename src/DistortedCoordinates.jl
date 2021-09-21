@@ -6,7 +6,12 @@
 #---------------------------------------------------------------
 
 using ForwardDiff 
-export theta, q, h
+export theta, phi, q, h, Z
+
+function project_back_on_sphere(x::T, y::T, z::T) where {T<:Real}
+    r = sqrt.(x^2 + y^2 + z^2)
+    return (x, y, z) ./ r
+end
 
 function Z(μ::T, ν::T)::T where {T<:Real}
     z = (1 / 80) * (53 * cos(μ) + 90 * cos(μ)^3 - 63 * cos(μ)^5) 
@@ -17,9 +22,7 @@ function theta(μ::T, ν::T)::T where {T<:Real}
     x = sin(μ)*cos(ν) 
     y = sin(μ)*sin(ν) 
     z = Z(μ,ν)
-    # Renormalize the coordinates
-    r = sqrt.(x^2 + y^2 + z^2)
-    x, y, z = (x, y, z) ./ r
+    x, y, z = project_back_on_sphere(x, y, z) 
     return acos(z/sqrt(x^2 + y^2 + z^2))
 end
 
@@ -27,10 +30,12 @@ function phi(μ::T, ν::T)::T where {T<:Real}
     x = sin(μ)*cos(ν) 
     y = sin(μ)*sin(ν) 
     z = Z(μ,ν)
-    # Renormalize the coordinates
-    r = sqrt.(x^2 + y^2 + z^2)
-    x, y, z = (x, y, z) ./ r
-    return atan(y, x)
+    x, y, z = project_back_on_sphere(x, y, z) 
+    if ν > π   
+        return atan(y,x) + 2π
+    else
+        return atan(y,x)
+    end
 end
 
 function g(μ::T, ν::T) where {T}

@@ -4,11 +4,10 @@
 #-----------------------------------------------------
 
 using FastSphericalHarmonics, StaticArrays
-export grad, div 
+export grad, div, S1FD, S2FD 
 
 function grad(F::AbstractMatrix{T}, ni::Int, nj::Int) where {T <: Real}
     Dθ, Dϕ = dscalar(ni, nj, 4)
-    sinθ   = map((μ,ν)->sin(μ), ni, nj)
     gradF1 = Dθ*vec(F)
     gradF2 = Dϕ*vec(F)
     dF  = map((x,y)->SVector{2}([x,y]), reshape(gradF1, ni, nj), reshape(gradF2, ni, nj))
@@ -17,13 +16,16 @@ end
 
 function Base. div(F::AbstractMatrix{SVector{2, T}}, ni::Int, nj::Int) where {T<:Real}
     Dθ̄, Dϕ̄ = dvector(ni, nj, 4) 
-    sinθ  = map((μ,ν)->sin(μ), ni, nj)
     F1 = map(x->x[1], F) 
     F2 = map(x->x[2], F) 
-    # divF1 = vec(inv.(sinθ)) .* Dθ̄*(vec(sinθ) .* vec(F1))
-    # divF2 = vec(inv.(sinθ)) .* (Dϕ̄*vec(F2))
-    divF1 =  Dθ̄*vec(F1)
-    divF2 =  Dϕ̄*vec(F2)
-    divF  = divF1 + divF2
-    return reshape(divF1 + divF2, ni, nj)
+    divF = Dθ̄*vec(F1) + Dϕ̄*vec(F2) 
+    return reshape(divF, ni, nj)
+end
+
+function S1FD(h::AbstractMatrix{T}, F¹::AbstractVector{T}) where {T<:Real}
+    return sqrt(det(h)) .* raise(inv(h), F¹)
+end
+
+function S2FD(h::AbstractMatrix{T}, F⁰::T) where {T<:Real}
+    return sqrt(1 / det(h)) .* F⁰
 end

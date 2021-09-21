@@ -5,4 +5,5 @@
 using Test, LaplaceBeltrami
 using FastGaussQuadrature, Arpack, LinearAlgebra
 
-@test 1 == 1
+include("LinearOperatorsTest.jl")
+include("LaplaceTest.jl")

@@ -1,79 +1,23 @@
 #-----------------------------------------------------
-# Check spherical harmonics with finite differences 
+# Test the Finite Difference Laplace Operator
 # Soham 07/2021
 #-----------------------------------------------------
-# — Start with a function on the sphere.
-# — Apply the Laplace operator in terms of FD
-# — Do the same in terms of SH.
-# — If the final output is different then
-# — Compare whether the solutions agree at the gradient.
-# — If yes, compare at the divergence.
-# — How to compare? Compute the modes of the FD solution using SHTOOLS. Or
-#   compare at the FD points throwing away half the points.
-# — Do a convergence Y22 for both approaches.
 
-using FastSphericalHarmonics, LinearAlgebra, Plots, StaticArrays
-
-function laplaceSH(u::Function, lmax::Int)
-    U       = map(u, lmax)
-    qmetric = map(q, lmax)
-    hmetric = map(h, lmax)
-    Ulm     = spinsph_transform(U, 0) 
-    dU      = grad(Ulm, lmax) 
-    SdU     = map(S1, qmetric, qmetric, dU) 
-    @assert all(maximum(dU - SdU) .< 1e-12)
-    dSdU    = div(SdU, lmax, "Cartesian") 
-    ΔU      = map(S2, qmetric, qmetric, dSdU) 
-    @assert maximum(dSdU - ΔU) < 1e-12
-    return (U, dU, dSdU, ΔU)
-end
+using LinearAlgebra
 
 function laplaceFD(u::Function, ni::Int, nj::Int)
     U       = map(u, ni, nj) 
     qmetric = map(q, ni, nj)
     hmetric = map(h, ni, nj)
     dU      = grad(U, ni, nj)
-
-    # Introduce analytic gradient here. 
-    dU      = map(dY22, ni, nj) 
-    vsin2θ = map((μ,ν)->SVector{2}(1, sin(μ)^2), ni, nj)
-    sinθ = map((μ,ν)->SVector{2}(sin(μ), sin(μ)), ni, nj)
-    onesinθ = map((μ,ν)->sin(μ), ni, nj)
-    # @show typeof(vsin2θ)
-    # @show typeof(dU)
-    # @show typeof(sinθ)
-    # @show size(vsin2θ)
-    # @show size(dU)
-    # @show size(sinθ)
-        
-    # SdU = sinθ .* (dU ./ (vsin2θ))
-    SdU = map(.*, map( ./, dU, vsin2θ), sinθ)
-
-    # SdU     = map(S1, qmetric, qmetric, dU) 
-    # @assert all(maximum(dU - SdU) .< 1e-12)
+    SdU     = map(S1FD, hmetric, dU) 
     dSdU    = div(SdU, ni, nj) 
-    ΔU = (1 ./ onesinθ) .* dSdU
-
-    # ΔU      = map(S2, qmetric, qmetric, dSdU) 
-    # @assert maximum(dSdU - ΔU) < 1e-12
-    return (U, dU, dSdU, ΔU)
+    ΔU      = map(S2FD, hmetric, dSdU) 
+    return (U, dU, ΔU)
 end
 
-function compare(u::Array{T,2}, v::Array{T,2}) where {T}
-    return u - v[:, begin:2:end]
-end
-
-function Y22(μ, ν)
-    return sYlm(Real,0,2,2,μ,ν)
-end
-
-function dY22(μ, ν)
-    return SVector{2, Float64}([∂θsYlm(Real,0,2,2,μ,ν), ∂ϕsYlm(Real,0,2,2,μ,ν)])
-end
-
-# FIXME: Convergence orders are acting funny. We're getting 
-# 2nd order convergence for a 4th order method. 
-# Check convergence for Dθ [Why do we get 2nd order convergence?]
+# FIXME: Convergence orders are acting funny. We're getting 2nd order
+# convergence for a 4th order method. 
 function convergence(order::Int)
     L2θ = zeros(9)
     L2ϕ = zeros(9)

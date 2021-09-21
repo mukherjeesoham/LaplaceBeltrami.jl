@@ -3,6 +3,7 @@
 # Soham 5/20
 # Construct new sparse FD operators that respect
 # the symmetries around the poles for scalars and vectors
+# FIXME: We can 2nd order convergence for a fourth order method.
 #---------------------------------------------------------------
 
 using FastSphericalHarmonics
@@ -17,8 +18,6 @@ function npoints(lmax::Int)::NTuple{2, Int}
 end
 
 function collocation(i::Int, j::Int, ni::Int, nj::Int)
-    # TODO: Add ability to compute for arbitrary i and j to test
-    # the wrap function
     N = ni 
     M = nj
     θ, ϕ = (π / N * (0.5:(N - 0.5)), 2π / M * (0:(M - 1)))
@@ -60,8 +59,6 @@ function parity(i::Int, ni::Int)
     end
 end
 
-# FIXME: We get 2nd order convergence for the scalar
-# derivative operators for a 4th order method.
 function stencil(order::Int, index::Int)
     if order == 2
         return (-1/2, 0, 1/2)[index+2]
