@@ -3,10 +3,26 @@
 # Soham 05/2021
 #-----------------------------------------------------
 
-using FastSphericalHarmonics, StaticArrays
+using FastSphericalHarmonics, StaticArrays, Plots, Dates
 export grad, laplace, Laplace, S1, S2
 export gradbar, divbar
-using CairoMakie
+
+function visualize(C⁰::AbstractMatrix{T}) where {T<:Real}
+    x = 1:size(C⁰)[1]
+    plot(x, sum(abs, C⁰, dims=2)) 
+    datetime = now()
+    savefig("./plots/modes/S-$datetime.png")
+end
+
+function visualize(C⁰::AbstractMatrix{T}) where {T<:StaticArrays.SVector{2, Float64}}
+    x = 1:size(C⁰)[1]
+    C1⁰ = map(x->x[1], C⁰)
+    C2⁰ = map(x->x[2], C⁰)
+    plot(x, sum(abs, C1⁰, dims=2)) 
+    plot!(x, sum(abs, C2⁰, dims=2)) 
+    datetime = now()
+    savefig("./plots/modes/V-$datetime.png")
+end
 
 struct Laplace{T} <: AbstractMatrix{T}
     lmax::Int
@@ -50,6 +66,7 @@ function Base. div(F¹::AbstractMatrix{SVector{2, T}}, lmax::Int) where {T<:Real
     M   = map(matrix, lmax)
     F¹  = SVector{2}.(inv.(M) .* F¹)
     C¹  = spinsph_transform(F¹, -1)  
+    visualize(C¹)  # <==== Visualize modes
     ðC¹ = spinsph_eth(C¹, -1)
     ∇²F = spinsph_evaluate(ðC¹, 0) 
     return ∇²F
@@ -67,15 +84,51 @@ function S3(q::AbstractMatrix{T}, h::AbstractMatrix{T}, F¹::AbstractVector{T}) 
     return sqrt(det(q) / det(h)) .* F¹
 end
 
-# FIXME: Check if this Laplace operator gives the correct eigenvalues for the eigensolver. 
-# If not, look into this.
+function prolongate(C⁰::AbstractMatrix{T}, A::Laplace) where {T}
+    lnew = 2 * A.lmax
+    PC⁰  = zeros(lnew + 1, 2 * lnew + 1)
+    for index in CartesianIndices(C⁰)
+        PC⁰[index] = C⁰[index]
+    end
+    return PC⁰
+end
+
+function prolongate(A::Laplace)
+    lnew = 2 * A.lmax
+    qmetric = map(q, lnew)   
+    hmetric = map(h, lnew)   
+    Anew    = Laplace{Float64}(lnew, qmetric, qmetric)
+    return Anew
+end
+
+function restrict(PC⁰::AbstractMatrix{T}, A::Laplace) where {T}
+    return PC⁰[1:A.lmax + 1, 1:2*A.lmax + 1]
+end
+
 function laplace(C⁰::AbstractMatrix{T}, A::Laplace) where {T<:Real}
+    visualize(C⁰)  # <==== Visualize modes
     dU      = grad(C⁰, A.lmax) 
     SdU     = map(S1, A.q, A.h, dU) 
     dSdU    = div(SdU, A.lmax) 
     ΔU      = map(S2, A.q, A.h, dSdU) 
     return spinsph_transform(ΔU, 0) 
 end
+
+# function laplace(C⁰::AbstractMatrix{T}, A::Laplace) where {T<:Real}
+    # visualize(C⁰)  # <==== Visualize modes
+    # # TODO: Should we do this only around the divergence? 
+    # # FIXME: Why is this causing issues with even the simple coordinates?
+    # PC⁰ = prolongate(C⁰, A) 
+    # PA  = prolongate(A)
+    # # Do all calculations with twice the number of modes
+    # dU   = grad(PC⁰, PA.lmax) 
+    # SdU  = map(S1, PA.q, PA.h, dU) 
+    # dSdU = div(SdU, PA.lmax) 
+    # ΔU   = map(S2, PA.q, PA.h, dSdU) 
+    # # Now only keep half the number of modes 
+    # RΔU = restrict(ΔU, A) 
+    # return spinsph_transform(RΔU, 0) 
+# end
 
 function laplace(x::AbstractArray{Float64,1}, A::Laplace)::AbstractArray{Float64,1}
     return vec(laplace(reshape(x, A.lmax + 1, 2*A.lmax + 1), A))

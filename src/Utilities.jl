@@ -6,7 +6,7 @@
 
 using FastSphericalHarmonics, LinearAlgebra, ForwardDiff
 export quad, gramschmidt, evaluate, jacobian, transform
-export cartesian2spherical, spherical2cartesian
+export cartesian2spherical, spherical2cartesian, normalize
 export raise, lower, isdiagonal
 
 function Base. map(u::Function, lmax::Int)
@@ -57,6 +57,18 @@ function spherical2cartesian(r::T, θ::T, ϕ::T) where {T <: Real}
     y = r .* sin.(ϕ) .* sin.(θ)
     z = r .* cos.(θ)
     return (x, y, z)
+end
+
+function spherical2cartesian(θ::T, ϕ::T) where {T <: Real} 
+    x = cos.(ϕ) .* sin.(θ)
+    y = sin.(ϕ) .* sin.(θ)
+    z = cos.(θ)
+    return (x, y, z)
+end
+
+function normalize(x::T, y::T, z::T) where {T<:Real}
+    r = sqrt.(x^2 + y^2 + z^2)
+    return (x, y, z) ./ r
 end
 
 function cartesian2spherical(x::Vector{T}) where {T<:Real}

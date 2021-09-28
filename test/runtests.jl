@@ -6,4 +6,4 @@ using Test, LaplaceBeltrami
 using FastGaussQuadrature, Arpack, LinearAlgebra
 
 include("LinearOperatorsTest.jl")
-include("LaplaceTest.jl")
+# include("LaplaceTest.jl")

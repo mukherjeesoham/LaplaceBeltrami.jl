@@ -5,41 +5,34 @@
 # the associated metric
 #---------------------------------------------------------------
 
-using ForwardDiff 
-export theta, phi, q, h, Z
+using ForwardDiff, Plots
+export q, h, θϕ_of_μν 
 
-function project_back_on_sphere(x::T, y::T, z::T) where {T<:Real}
-    r = sqrt.(x^2 + y^2 + z^2)
-    return (x, y, z) ./ r
+function XYZ_of_xyz(x::T, y::T, z::T) where {T<:Real} 
+    """
+    Since coordinate transformations in x, y and z are smooth, 
+    we only do coordinate transformations here. 
+    """
+    # FIXME: Any changes to x or y coordinates gives an assertion error
+    # AssertionError: abs(imag(c)) ≤ sqrt(eps()) in 
+    #  [1] coeff_complex2vector(C::Matrix{ComplexF64}, s::Int64)
+     # @ FastSphericalHarmonics ~/.julia/packages/FastSphericalHarmonics/Dnkrz/src/spin.jl:67
+    X = x 
+    Y = y 
+    Z = (1 / 80) * (53 * z + 90 * z^3 - 63 * z^5)
+    return normalize(X,Y,Z)
 end
 
-function Z(μ::T, ν::T)::T where {T<:Real}
-    z = (1 / 80) * (53 * cos(μ) + 90 * cos(μ)^3 - 63 * cos(μ)^5) 
-    return z
-end
-
-function theta(μ::T, ν::T)::T where {T<:Real}
-    x = sin(μ)*cos(ν) 
-    y = sin(μ)*sin(ν) 
-    z = Z(μ,ν)
-    x, y, z = project_back_on_sphere(x, y, z) 
-    return acos(z/sqrt(x^2 + y^2 + z^2))
-end
-
-function phi(μ::T, ν::T)::T where {T<:Real}
-    x = sin(μ)*cos(ν) 
-    y = sin(μ)*sin(ν) 
-    z = Z(μ,ν)
-    x, y, z = project_back_on_sphere(x, y, z) 
-    if ν > π   
-        return atan(y,x) + 2π
-    else
-        return atan(y,x)
-    end
+function θϕ_of_μν(μ::T, ν::T) where {T<:Real}
+    x, y, z = spherical2cartesian(μ, ν)
+    X, Y, Z = XYZ_of_xyz(x, y, z)
+    r, θ, ϕ = cartesian2spherical(X,Y,Z) 
+    @assert r ≈ 1.0
+    return (θ,ϕ)
 end
 
 function g(μ::T, ν::T) where {T}
-    θ = theta(μ, ν) 
+    θ, ϕ = θϕ_of_μν(μ, ν) 
     return SMatrix{2,2}([1.0 0; 0 sin(θ)^2])
 end
 
@@ -47,9 +40,8 @@ function q(μ::T, ν::T) where {T}
     return SMatrix{2,2}([1.0 0; 0 sin(μ)^2])
 end
 
-function θϕ_of_μν(x::Array{T,1}) where {T<:Real} 
-    μ, ν = x
-    return [theta(μ,ν), ν] 
+function θϕ_of_μν(μν::Array{T,1}) where {T<:Real} 
+    return SVector{2}(θϕ_of_μν(μν...))
 end
 
 function jacobian(μ::T, ν::T) where {T<:Real}

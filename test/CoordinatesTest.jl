@@ -6,7 +6,7 @@
 #-----------------------------------------------------
 
 using FastSphericalHarmonics, LinearAlgebra, Test
-using ForwardDiff, CairoMakie, Random
+using ForwardDiff, Random
 using StaticArrays
 
 function rotate(x::T, y::T, z::T) where {T <: Real} 
