@@ -5,6 +5,7 @@
 #-----------------------------------------------------
 
 using StaticArrays
+export cartesian, S4, S5
 
 function xyz_of_rθϕ(X::Array{T,1}) where {T<:Real} 
     r, μ, ν = X
@@ -14,7 +15,6 @@ function xyz_of_rθϕ(X::Array{T,1}) where {T<:Real}
     return SVector{3}([x,y,z])
 end
 
-# Introduce r
 function jacobian_xyz_of_rθϕ(μ::T, ν::T) where {T<:Real}
     r = 1
     return SMatrix{3,3}(ForwardDiff.jacobian(xyz_of_rθϕ, [r,μ,ν]))
@@ -24,7 +24,6 @@ function jacobian_rθϕ_of_xyz(μ::T, ν::T) where {T<:Real}
     return inv(jacobian_xyz_of_rθϕ(μ,ν))
 end
 
-export cartesian
 function cartesian(metric::Function, μ::T, ν::T) where {T<:Real}
     # Invent the r coordinate.
     M = diagm([1.0,0.0,0.0])
@@ -80,3 +79,11 @@ function Base. div(F::AbstractMatrix{SVector{3, T}}, lmax::Int, symbol::Symbol) 
     return dFxdx + dFydy + dFzdz
 end
 
+# FIXME: Check scaling with FD operators
+function S4(q::AbstractMatrix{T}, h::AbstractMatrix{T}, F¹::AbstractVector{T}) where {T<:Real}
+    return sqrt(det(h)) .* raise(inv(h), F¹)
+end
+
+function S5(q::AbstractMatrix{T}, h::AbstractMatrix{T}, F⁰::T) where {T<:Real}
+    return sqrt(1 / det(h)) .* F⁰
+end

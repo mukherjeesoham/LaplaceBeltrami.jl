@@ -33,13 +33,12 @@ end
 #---------------------------------------------------------------
 # TODO: Remove the possibility of aliasing. Visualize the mode. 
 #       These seem to grow with time. But do I really understand what's going on?
-# TODO: Replace the SH divergence with CC divergence. 
-# TODO: Should the m = 0 mode be purely real for spin -1 spherical harmonics
+# FIXME: Fix the CC divergence. 
+# FIXME: Why do 
 
-# Use Arpack 
 if true
     print("Complicated coordinates | Arpack")
-    (l,lmin) = (1, 12) 
+    (l,lmin) = (1, 13) 
     qmetric  = map(q, lmin)   
     hmetric  = map(h, lmin)   
     A        = Laplace{Float64}(lmin, qmetric, hmetric)
