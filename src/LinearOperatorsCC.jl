@@ -5,7 +5,7 @@
 #-----------------------------------------------------
 
 using StaticArrays
-export cartesian, S4, S5
+export cartesian, S4, S5, jacobian_xyz_of_rθϕ
 
 function xyz_of_rθϕ(X::Array{T,1}) where {T<:Real} 
     r, μ, ν = X
@@ -16,11 +16,12 @@ function xyz_of_rθϕ(X::Array{T,1}) where {T<:Real}
 end
 
 function jacobian_xyz_of_rθϕ(μ::T, ν::T) where {T<:Real}
-    r = 1
-    return SMatrix{3,3}(ForwardDiff.jacobian(xyz_of_rθϕ, [r,μ,ν]))
+    # FIXME: Test jacobian thoroughly
+    return SMatrix{3,3}(ForwardDiff.jacobian(xyz_of_rθϕ, [1,μ,ν]))
 end
 
 function jacobian_rθϕ_of_xyz(μ::T, ν::T) where {T<:Real}
+    # FIXME: You might need a transpose here.
     return inv(jacobian_xyz_of_rθϕ(μ,ν))
 end
 
@@ -35,28 +36,39 @@ function cartesian(metric::Function, μ::T, ν::T) where {T<:Real}
 end
 
 function grad(F::AbstractMatrix{T}, lmax::Int, symbol::Symbol) where {T <: Real}
-    @assert symbol == :Cartesian
-    ∇F  = grad(spinsph_transform(F, 0), lmax) 
-    dFdθ = map(x->x[1], ∇F) 
-    dFdϕ = map(x->x[2], ∇F) 
-
-    # Unpack the Jacobian
-    J    = map(jacobian_rθϕ_of_xyz, lmax)
-    dθdx = map(x->x[2,1], J)
-    dθdy = map(x->x[2,2], J)
-    dθdz = map(x->x[2,3], J)
-    dϕdx = map(x->x[3,1], J)
-    dϕdy = map(x->x[3,2], J)
-    dϕdz = map(x->x[3,3], J)
-
-    # Convert to Cartesian components
-    dFdx = dθdx .* dFdθ + dϕdx .* dFdϕ 
-    dFdy = dθdy .* dFdθ + dϕdy .* dFdϕ 
-    dFdz = dθdz .* dFdθ + dϕdz .* dFdϕ 
-
-    # Pack into a 3 vector
-    return map((x,y,z)->SVector{3}(x,y,z), dFdx, dFdy, dFdz)
+    @assert symbol == :Spherical
+    ∇F = grad(spinsph_transform(F, 0), lmax) 
+    # FIXME: Setting the first component to zero won't work.
+    dF = map(x->SVector{3}([0.0, x...]),  ∇F)
+    return dF
 end
+
+function grad(F::AbstractMatrix{T}, lmax::Int, symbol::Symbol) where {T <: Real}
+    @assert symbol == :Cartesian
+    ∇F = grad(spinsph_transform(F, 0), lmax) 
+    dF = map(x->SVector{3}([0.0, x...]),  ∇F)
+    # TODO: Is the Jacobian correct? 
+    # Let's expand this out.
+    J  = map(jacobian_rθϕ_of_xyz, lmax)
+
+    dFdr = map(x->x[1], dF)
+    dFdθ = map(x->x[2], dF)
+    dFdϕ = map(x->x[3], dF)
+
+    drdx = map((μ,ν)->cos(ν)*sin(μ), lmax)
+    dθdx = map((μ,ν)->cos(ν)*cos(μ), lmax)
+    dϕdx = map((μ,ν)->cos(μ), lmax)
+
+
+    dFdx = dFdr .* drdx + dFdθ .* dθdx  + dFdϕ .* dϕdx 
+    dFdy = dFdx
+    dFdz = dFdx
+    # dFdy = dFdr .* drdy + dFdθ .* dθdy  + dFdϕ .* dϕdy 
+    # dFdz = dFdr .* drdz + dFdθ .* dθdz  + dFdϕ .* dϕdz 
+
+    return map((x,y,z)->SVector{3}(x, y, z), dFdx, dFdy, dFdz)  
+end
+
 
 function Base. div(F::AbstractMatrix{SVector{3, T}}, lmax::Int, symbol::Symbol) where {T<:Real}
     @assert symbol == :Cartesian

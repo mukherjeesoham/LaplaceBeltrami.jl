@@ -36,7 +36,7 @@ end
 # FIXME: Fix the CC divergence. 
 # FIXME: Why do 
 
-if true
+if false
     print("Complicated coordinates | Arpack")
     (l,lmin) = (1, 13) 
     qmetric  = map(q, lmin)   
@@ -54,7 +54,7 @@ if true
     savefig("./plots/l2m0-distorted-arpack")
 end
 
-if false
+if true
     print("Complicated coordinates | Iterative Solvers")
     # Use the power method from IterativeSolvers
     # FIXME: How do we get multiple eigenvalue/eigenvector pairs? Start with a perturbation?
