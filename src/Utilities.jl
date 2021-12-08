@@ -10,7 +10,7 @@ export raise, lower, quad, gramschmidt, rotate
 function Base. map(u::Function, lmax::Int)
    N = lmax + 1
    θ, ϕ = sph_points(N) 
-   return [u(θ, ϕ) for θ in θ, ϕ in ϕ]
+   return SMatrix{N,N}([u([θ, ϕ]) for θ in θ, ϕ in ϕ])
 end
 
 function raise(qinv::AbstractMatrix{T}, x::AbstractVector{T}) where {T<:Real}
@@ -27,7 +27,7 @@ function quad(F⁰::Array{T,2}) where {T}
 end
 
 function rotate(x::AbstractVector{T})::AbstractVector{T} where {T <: Real} 
-    Random.seed!(42)
+    Random.seed!(17)
     A = rand(3,3)
     R = eigen(A + A').vectors
     @assert eltype(R) <: Real
