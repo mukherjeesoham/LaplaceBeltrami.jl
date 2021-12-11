@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # LaplaceOnASphere
-# Soham 8/2020
 # Choose a smooth coodinate transformation and compute the associated metric
+# Soham 8/2020
 #---------------------------------------------------------------
 # (r, θ, ϕ) / (x, y, z) are the *good* coordinates (metric is diagonal)
 # (s, μ, ν) / (u, v, w) are the *bad* coordinates  (metric is not diagonal)
@@ -18,7 +18,7 @@ Random.seed!(42)
 A = rand(3,3)
 R = eigen(A + A').vectors
 # Does R work and not b?
-b = zeros(3) 
+b = rand(3) 
 
 function uvw_of_xyz(xyz::AbstractArray) 
     return SVector{3}(R*xyz + b)
